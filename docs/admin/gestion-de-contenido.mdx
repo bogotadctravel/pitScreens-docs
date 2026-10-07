@@ -7,13 +7,26 @@ title: Gestión de contenido
 
 ## Contenido (`contenido.php`)
 
-1. Selecciona un archivo — **PNG, JPEG o MP4, máximo 80 MB** (validado en el
-   navegador antes de subir).
+1. Elige el **origen del archivo**:
+   - **Subir archivo nuevo** — selecciona un archivo del equipo (**PNG,
+     JPEG o MP4, máximo 80 MB**, validado en el navegador antes de subir).
+   - **Usar uno ya subido** — elige de un `<select>` con los archivos que ya
+     existen en la tabla `contenido` (`SELECT DISTINCT URL, Tipo`, sin
+     repetidos). Evita duplicar el mismo archivo físico en
+     `admin/assets/galeria/` cuando se quiere reutilizar un video/imagen en
+     otra programación.
 2. Elige el estado (Activo/Inactivo) y el número de orden dentro de la
    lista.
 3. Asigna a qué lista de reproducción pertenece.
-4. Al guardar, el archivo se copia a `admin/assets/galeria/` y se registra
-   en la tabla `contenido` (ver [Base de datos](../base-de-datos#contenido)).
+4. Al guardar:
+   - Si el origen es un archivo nuevo, se copia a `admin/assets/galeria/` y
+     se inserta una fila en la tabla `contenido` (ver
+     [Base de datos](../base-de-datos#contenido)).
+   - Si el origen es un archivo ya subido, **no se copia ningún archivo** —
+     se inserta una fila nueva en `contenido` con el mismo `URL`/`Tipo` del
+     archivo elegido, apuntando al mismo archivo físico ya existente en
+     disco; solo cambia a qué lista de reproducción, estado y orden queda
+     asociado.
 
 La galería se muestra debajo, separada en imágenes y videos, con una vista
 previa tipo lightbox (Fancybox) para las imágenes. Desde ahí se edita

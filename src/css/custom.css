@@ -1,30 +1,59 @@
 /**
- * Any CSS included here will be global. The classic template
- * bundles Infima by default. Infima is a CSS framework designed to
- * work well for content-centric websites.
+ * Paleta y tipografía de IDT App (mismo sistema de diseño del kiosco y el
+ * panel admin — ver docs/kiosco/diseno.mdx y docs/admin/diseno.mdx) en vez
+ * del verde por defecto de Docusaurus/Infima.
  */
 
-/* You can override the default Infima variables here. */
 :root {
-  --ifm-color-primary: #2e8555;
-  --ifm-color-primary-dark: #29784c;
-  --ifm-color-primary-darker: #277148;
-  --ifm-color-primary-darkest: #205d3b;
-  --ifm-color-primary-light: #33925d;
-  --ifm-color-primary-lighter: #359962;
-  --ifm-color-primary-lightest: #3cad6e;
+  --ifm-font-family-base: 'Segoe UI', system-ui, -apple-system, Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+
+  /* Azul institucional (Alcaldía de Bogotá / IDT) */
+  --ifm-color-primary: #1b4f8c;
+  --ifm-color-primary-dark: #17457a;
+  --ifm-color-primary-darker: #133c69;
+  --ifm-color-primary-darkest: #0f3057;
+  --ifm-color-primary-light: #2563ac;
+  --ifm-color-primary-lighter: #3573ba;
+  --ifm-color-primary-lightest: #5c93d1;
+
+  --ifm-color-success: #1fa97a;
+  --ifm-color-warning: #f2a93c;
+  --ifm-color-danger: #e5484d;
+
+  /* Mismo radio redondeado y acabado "plate" que usa el panel admin */
+  --ifm-global-radius: 10px;
+  --ifm-button-border-radius: 8px;
+  --ifm-card-border-radius: 14px;
+  --ifm-alert-border-radius: 10px;
+
   --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --docusaurus-highlighted-code-line-bg: rgba(27, 79, 140, 0.1);
+
+  /* Dorado de la estrella del logo — acento puntual, nunca dominante */
+  --idt-color-accent: #f2a93c;
 }
 
-/* For readability concerns, you should choose a lighter palette in dark mode. */
+/* Para dark mode, tonos más claros del mismo azul (Infima recomienda una
+   paleta más clara en modo oscuro para mantener el contraste) */
 [data-theme='dark'] {
-  --ifm-color-primary: #25c2a0;
-  --ifm-color-primary-dark: #21af90;
-  --ifm-color-primary-darker: #1fa588;
-  --ifm-color-primary-darkest: #1a8870;
-  --ifm-color-primary-light: #29d5b0;
-  --ifm-color-primary-lighter: #32d8b4;
-  --ifm-color-primary-lightest: #4fddbf;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-color-primary: #5c93d1;
+  --ifm-color-primary-dark: #3d7fc4;
+  --ifm-color-primary-darker: #2d73bd;
+  --ifm-color-primary-darkest: #255f9c;
+  --ifm-color-primary-light: #7ba7da;
+  --ifm-color-primary-lighter: #8bb2de;
+  --ifm-color-primary-lightest: #b6ceeb;
+
+  --docusaurus-highlighted-code-line-bg: rgba(92, 147, 209, 0.2);
+}
+
+/* Footer en el azul más oscuro de la paleta, igual que el resto de la app,
+   en vez del gris casi negro por defecto de Infima */
+footer.footer--dark {
+  --ifm-footer-background-color: #0f3057;
+}
+
+.navbar {
+  box-shadow: 0 1px 0 var(--ifm-toc-border-color);
 }

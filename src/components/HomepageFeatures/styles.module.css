@@ -5,7 +5,19 @@
   width: 100%;
 }
 
-.featureSvg {
-  height: 200px;
-  width: 200px;
+.featureBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--ifm-color-primary);
+  margin-bottom: 1rem;
+}
+
+.featureIcon {
+  width: 44px;
+  height: 44px;
+  color: #fff;
 }

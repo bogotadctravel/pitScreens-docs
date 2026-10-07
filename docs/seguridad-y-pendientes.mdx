@@ -74,3 +74,10 @@ Para que quede claro qué es "deuda técnica preexistente" y qué se resolvió:
 - **Logos con texto blanco invisibles** sobre el nuevo tema claro del panel
   admin (`Logo_1.png`, `Logo_2.png`) — reemplazados por versiones a color
   (ver [Sistema de diseño del panel](./admin/diseno)).
+- **"headers already sent" en páginas como `contenido.php`/`editar_frame.php`**
+  — ambos `Conexion_DB.php` terminaban en una etiqueta de cierre `?>` seguida
+  de un salto de línea; al incluirse antes de `session_start()`, ese salto se
+  enviaba como salida HTML real y rompía `session_start()`/`header()` en
+  cuanto la página tenía suficiente contenido para vaciar el buffer de
+  salida. Se quitó la etiqueta `?>` final de ambos archivos (nunca cerrarla
+  en un archivo de solo inclusión que no tiene nada después).
