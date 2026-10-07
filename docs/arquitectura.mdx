@@ -1,0 +1,97 @@
+---
+sidebar_position: 3
+---
+
+# Arquitectura
+
+## Stack tecnológico
+
+- **Backend:** PHP plano (sin framework), un archivo por página.
+- **Base de datos:** MySQL, vía extensión **MySQLi** (sin ORM, consultas con
+  interpolación de variables directamente en el SQL).
+- **Frontend Admin:** Bootstrap 4 + jQuery + un set de plugins (DataTables,
+  Fancybox, Chart.js, Select2, etc. — no todos están realmente conectados,
+  ver [Panel Administrativo](./admin/resumen)).
+- **Frontend Kiosco:** CSS propio (sin framework) + jQuery, pensado para
+  pantalla completa táctil.
+- **Autenticación:** sesiones PHP nativas (`$_SESSION`) + contraseñas en
+  hash **MD5**.
+- **Proxy:** `app/proxy.php` usa cURL para descargar y re-servir el sitio
+  externo del IDT dentro de un `<iframe>`, evadiendo `X-Frame-Options`.
+
+## Los dos módulos
+
+```
+pitScreens/
+├── app/     → Kiosco: lo que ve el visitante en el pedestal
+├── admin/   → Panel: lo que usa el operador desde un navegador
+└── idt_app.sql
+```
+
+Ambos módulos:
+
+- Viven en carpetas hermanas bajo la raíz del sitio web.
+- Comparten la misma base de datos `idt_app`, cada uno con su propio archivo
+  `Conexion_DB.php` (`admin/assets/php/Conexion_DB.php` y
+  `app/assets/php/Conexion_DB.php` — de hecho `app/` incluye el de `admin/`
+  vía ruta relativa `../admin/assets/php/Conexion_DB.php` en vez de tener
+  lógica de conexión propia).
+- **No comparten código ni assets** — cada uno tiene su propio CSS, JS e
+  imágenes bajo `assets/`.
+- Si el mismo navegador tiene sesión iniciada en `admin/` (`$_SESSION['logeado']`),
+  `app/log_index.php` lo detecta y salta directo a la pantalla principal del
+  kiosco — comparten cookie de sesión (`PHPSESSID`) por estar bajo el mismo
+  dominio, aunque cada uno gestiona sus propias claves de `$_SESSION`.
+
+## Duración de sesión
+
+| Sesión | Duración | Por qué |
+|--------|----------|---------|
+| Admin (`admin/*.php`) | 2 horas | Uso normal de oficina, se vence por seguridad |
+| Kiosco — selección de módulo (`app/log_index.php`) | 1 año | El pedestal opera 24/7; no se debe pedir reconfigurar el módulo en cada reinicio del navegador |
+
+## Flujo de datos del contenido
+
+1. Un operador sube una imagen/video desde `admin/contenido.php` → se guarda
+   en `admin/assets/galeria/` y se registra en la tabla `contenido`, asociado
+   a una `lista-reproduccion`.
+2. `app/index.php` (pantalla de espera del kiosco) consulta, en cada carga,
+   cuál `lista-reproduccion` debe estar activa según su `Fecha-Inicio`, la
+   activa (`Estado = 1`) y desactiva las demás.
+3. `app/tiempo.php` se sondea por AJAX cada segundo para detectar cambios de
+   programación sin recargar la pantalla completa.
+4. El slideshow en `index.php` arma un arreglo JS (`loopAssets`) con las URLs
+   de `admin/assets/galeria/...` y reproduce imágenes (10s) o videos
+   (duración completa) en bucle.
+
+## Una limitación a tener en cuenta
+
+Las URLs de los medios en `app/index.php` están **hardcodeadas** a
+`http://localhost/IDT_app/admin/assets/galeria/...` y
+`http://localhost/IDT_app/app/assets/media/IDT.mp4` (el video por defecto).
+Esto significa que:
+
+- El proyecto debe quedar accesible exactamente en `http://localhost/IDT_app/`
+  (ver [Instalación local](./instalacion)) para que el slideshow cargue los
+  medios correctamente.
+- Si en el futuro se despliega en un dominio/puerto distinto, hay que
+  actualizar esas rutas en `app/index.php` (no son dinámicas ni relativas).
+
+## Archivos "muertos" conocidos
+
+Durante la puesta en marcha se identificaron archivos que **no están
+incluidos desde ninguna página activa** — quedaron de una plantilla previa
+("supersubsidio") o de integraciones no terminadas. No estorban, pero tampoco
+hace falta mantenerlos:
+
+- `app/assets/js/mapas.js`, `supersubsidio_app.js`, `sweetalert3.min.js`,
+  `jquery_V-1-1.min.js`, `Inactividad - copia.js`
+- `app/assets/php/menu.php`, `app/assets/php/modulo.php`
+- `admin/assets/php/Conexion_Reco.php` (conexión a una base `electronika`
+  para estadísticas de reconocimiento facial — tabla `reco` sin página que la
+  use hoy)
+- `admin/assets/php/reporte_charts.php`, `admin/assets/php/reporte_tabla.php`
+  (copias huérfanas dentro de `assets/php/`, distintas de las páginas reales
+  `admin/reporte_charts_*.php` y `admin/reporte_tabla.php`)
+- `admin/assets/ajax/upload2.php` (restos de un plugin de subida de archivos
+  que no se usa)

@@ -1,0 +1,8 @@
+{
+  "label": "Módulo Kiosco (app/)",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "description": "La pantalla táctil que corre en cada pedestal del Punto de Información Turística."
+  }
+}

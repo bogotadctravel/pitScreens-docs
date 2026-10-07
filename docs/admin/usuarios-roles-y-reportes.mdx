@@ -1,0 +1,46 @@
+---
+sidebar_position: 3
+title: Usuarios, roles y reportes
+---
+
+# Usuarios, roles y reportes
+
+## Roles
+
+| Rol | Permisos |
+|-----|----------|
+| **Administrador** | Acceso total: contenido, programación, frame, módulos, usuarios, reportes |
+| **Colaborador** | Todo lo anterior **excepto** usuarios y reportes |
+
+El rol se asigna al crear o editar un usuario desde `usuarios.php` (solo
+visible/accesible para Administradores). Cada página protegida por rol repite
+la misma comprobación: `if($funcion_user == 'Administrador') { ... }`.
+
+## Usuarios (`usuarios.php` / `editar_usuario.php` / `perfil_usuario.php`)
+
+- Alta de usuario: nombre, correo, foto de perfil (opcional), función/rol y
+  contraseña.
+- La contraseña se guarda como `MD5($contraseña)` — no hay verificación de
+  fortaleza ni confirmación de contraseña en el formulario.
+- `perfil_usuario.php` permite a cualquier usuario editar su propio perfil.
+
+## Reportes (solo Administrador)
+
+| Página | Contenido |
+|--------|-----------|
+| `reporte_tabla.php` | Tabla general de interacciones (módulo, edad, género, tiempo), con exportado vía DataTables (Excel/PDF/imprimir) |
+| `reporte_visitantes.php` | Listado completo de visitantes registrados, también con DataTables |
+| `reporte_charts_genero.php` | Gráfica de barras/torta por género (Chart.js) |
+| `reporte_charts_edad.php` | Gráfica por rango de edad |
+| `reporte_charts_tiempo.php` | Gráfica de tiempo promedio de uso |
+
+Las tres páginas de gráficas comparten estructura: un formulario de rango de
+fechas, un `<canvas>` con Chart.js, y un botón "Guardar gráfico" que exporta
+el canvas a PDF con `jsPDF`. Los datos de género/edad/tiempo vienen de la
+tabla `reco` — alimentada por un sistema externo de reconocimiento (ver
+[Arquitectura](../arquitectura#archivos-muertos-conocidos)).
+
+Los colores de las gráficas están definidos directamente en el `<script>` de
+cada página (no en CSS, porque Chart.js los necesita como valores JS) — se
+actualizaron para usar la misma paleta del [sistema de diseño](./diseno)
+(`rgb(27, 79, 140, 1)` azul institucional / `rgba(242, 169, 60, 1)` dorado).

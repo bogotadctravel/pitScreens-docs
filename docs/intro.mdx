@@ -1,0 +1,43 @@
+---
+sidebar_position: 1
+---
+
+# Introducción
+
+**IDT App** es el sistema que gestiona y muestra el contenido de las pantallas
+táctiles interactivas instaladas en los **Puntos de Información Turística (PIT)**
+de la ciudad de Bogotá. Cada pantalla va montada en un **pedestal con Windows**
+como sistema operativo, ejecutando la aplicación en un navegador.
+
+El sistema es una aplicación web en **PHP** (sin framework), con **MySQL** como
+base de datos y **jQuery** en el frontend. No requiere conexión a internet
+estable para funcionar día a día (solo el sitio externo que se muestra en el
+`iframe` del kiosco la necesita).
+
+## Dos módulos independientes
+
+| Módulo | Carpeta | Para quién | Qué hace |
+|--------|---------|------------|----------|
+| **Kiosco** | [`app/`](./kiosco/resumen-y-flujo) | El público que usa el pedestal | Slideshow de imágenes/video, registro de visitantes, acceso al contenido del IDT |
+| **Administrativo** | [`admin/`](./admin/resumen) | Operadores del IDT | Subir contenido, programar horarios, gestionar módulos, usuarios y ver reportes |
+
+Ambos módulos comparten una misma base de datos (`idt_app`) pero corren de forma
+independiente — cada uno con su propia sesión, sus propios estilos y su propio
+ciclo de vida.
+
+## Por dónde empezar
+
+- ¿Vas a instalarlo en un equipo nuevo? Ve a **[Instalación local](./instalacion)**.
+- ¿Quieres entender cómo encajan las piezas? Ve a **[Arquitectura](./arquitectura)**.
+- ¿Vas a operar el kiosco día a día? Ve a **[Módulo Kiosco](./kiosco/resumen-y-flujo)**.
+- ¿Vas a administrar contenido/usuarios? Ve a **[Panel Administrativo](./admin/resumen)**.
+- ¿Buscas la estructura de tablas? Ve a **[Base de datos](./base-de-datos)**.
+- ¿Te interesa qué falta por endurecer en seguridad? Ve a **[Seguridad y pendientes](./seguridad-y-pendientes)**.
+
+:::info Origen de esta documentación
+Este sitio documenta el estado real del código en el repositorio `pitScreens`,
+incluyendo el rediseño visual (tema claro/minimalista) y las correcciones
+aplicadas durante la puesta en marcha local del proyecto. El `README.md` en la
+raíz del repositorio se mantiene como referencia rápida; este sitio es la
+versión ampliada y navegable de esa misma información.
+:::

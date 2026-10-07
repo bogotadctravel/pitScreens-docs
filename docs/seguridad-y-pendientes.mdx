@@ -1,0 +1,76 @@
+---
+sidebar_position: 7
+---
+
+# Seguridad y pendientes
+
+Este proyecto funciona correctamente para operar en local / red interna, pero
+tiene varios puntos que **deben resolverse antes de exponerlo en un ambiente
+de producción o en una red no confiable**. Ninguno de estos se tocó durante
+el trabajo de puesta en marcha ni de rediseño visual — se documentan aquí
+para que queden a la vista.
+
+## Contraseñas en MD5
+
+Las contraseñas de `usuarios.php` se guardan como `MD5($contraseña)`, sin
+sal. MD5 se considera roto para contraseñas — es trivial de revertir con
+tablas rainbow. Migrar a `password_hash()` / `password_verify()` (bcrypt) es
+un cambio contenido: solo toca el alta/edición de usuario en
+`admin/usuarios.php`/`editar_usuario.php` y la verificación en
+`admin/index.php`.
+
+## Consultas SQL por interpolación de variables
+
+Las consultas arman el SQL concatenando variables directamente
+(`"... WHERE ID = '$id'"`), con `mysqli_escape_string()` como única defensa
+en algunos puntos (no en todos). El camino correcto es migrar a **consultas
+preparadas** (`mysqli_prepare()` o PDO con parámetros bindeados).
+
+## `app/proxy.php` sin lista blanca de dominios
+
+El proxy descarga cualquier URL que reciba por parámetro `?url=` y la
+re-sirve. Hoy solo se usa con la URL configurada en la tabla `frame`, pero el
+endpoint en sí no valida el origen — se recomienda validar que la URL
+pertenezca a un dominio autorizado antes de hacer la petición cURL.
+
+## `CURLOPT_SSL_VERIFYPEER` desactivado
+
+En `app/proxy.php`, la verificación SSL está desactivada — vulnerable a
+ataques MITM. Debe activarse en producción.
+
+## Endpoints de eliminación sin verificación de sesión
+
+`admin/assets/php/eliminar_img.php` y `eliminar_usuario.php` no comprueban
+que haya una sesión de administrador activa antes de borrar. Se recomienda
+agregar la misma verificación de `$_SESSION['logeado']` que usan el resto de
+páginas del panel, más un token CSRF.
+
+## Credenciales de base de datos en texto plano
+
+`Conexion_DB.php` (en ambos módulos) trae usuario/contraseña de MySQL
+directamente en el código. En producción conviene moverlas a variables de
+entorno o un `.env` fuera del control de versiones.
+
+---
+
+## Lo que sí se corrigió durante la puesta en marcha
+
+Para que quede claro qué es "deuda técnica preexistente" y qué se resolvió:
+
+- **`app/assets/php/Conexion_DB.php` apuntaba a una base inexistente**
+  (`supersubsidio`, resto de una plantilla previa) en vez de `idt_app` — el
+  módulo kiosco no podía conectarse a la base de datos hasta corregirlo.
+- **Sin charset UTF-8 en las conexiones MySQLi** — los acentos/eñes se
+  guardaban corruptos al registrar un visitante. Se agregó
+  `mysqli_set_charset($conexion, 'utf8mb4')` en los tres archivos de
+  conexión.
+- **`onsubmit="return marcado();"`** en `login.php`/`registro.php` del
+  kiosco llamaba a una función JS que no existe en el proyecto — eliminado.
+- **No había forma de volver a la selección de módulo** una vez configurado
+  un kiosco (`app/assets/php/logout.php` apuntaba a una ruta rota y no
+  estaba enlazado desde ninguna pantalla) — se corrigió y se expuso vía el
+  botón de engranaje en la pantalla de espera (ver
+  [Módulo Kiosco](./kiosco/resumen-y-flujo#cómo-volver-a-la-selección-de-módulo)).
+- **Logos con texto blanco invisibles** sobre el nuevo tema claro del panel
+  admin (`Logo_1.png`, `Logo_2.png`) — reemplazados por versiones a color
+  (ver [Sistema de diseño del panel](./admin/diseno)).

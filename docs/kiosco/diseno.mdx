@@ -1,0 +1,75 @@
+---
+sidebar_position: 2
+title: Sistema de diseño
+---
+
+# Sistema de diseño del kiosco
+
+El CSS del kiosco (`app/assets/css/styles.css`) se reescribió con un
+sistema de diseño moderno y minimalista, pensado específicamente para una
+**pantalla táctil sin mouse** en un pedestal.
+
+## Principios
+
+- **Sin `:hover`.** Nada crítico depende de un estado que un dedo no puede
+  disparar. Todo feedback interactivo usa `:active` (escala + cambio de
+  color al presionar).
+- **Objetivos de toque grandes.** Botones principales entre 64-88px de alto,
+  campos de texto ≥64px — cómodos incluso con guantes o dedos grandes.
+  Definido con `clamp()` para adaptarse tanto a un totem angosto como a una
+  pantalla ancha.
+- **Cero dependencias de CDN.** Las tipografías (`MuseoSans500`,
+  `MuseoSans700`, `Roboto-Regular`) están bundleadas en `app/assets/fonts/` —
+  el kiosco no necesita internet para verse bien.
+- **Identidad institucional.** Se mantiene el azul de la Alcaldía de Bogotá y
+  se suma el dorado de la estrella del logo del IDT como acento puntual.
+
+## Tokens (variables CSS en `:root`)
+
+```css
+--color-primary: #1B4F8C;       /* azul institucional */
+--color-primary-dark: #123B6B;  /* estados presionados */
+--color-accent: #F2A93C;        /* dorado del logo — uso puntual */
+--color-bg: #FFFFFF;
+--color-surface: #FFFFFF;
+--color-surface-alt: #F7F9FC;
+--color-border: #E4E7EC;
+--color-text: #1F2430;
+--color-text-muted: #6B7280;
+
+--radius-sm: 10px;  --radius-md: 18px;  --radius-lg: 28px;  --radius-pill: 999px;
+--shadow-sm / --shadow-md / --shadow-lg   /* sombras suaves, no duras */
+--transition: 200ms ease;
+```
+
+## Clases reutilizables
+
+| Clase | Uso |
+|-------|-----|
+| `.kiosk-card` | Tarjeta blanca centrada (login, registro, selección de módulo) |
+| `.kiosk-btn`, `.kiosk-btn--primary`, `.kiosk-btn--ghost`, `.kiosk-btn--block` | Botones grandes tipo pill |
+| `.kiosk-input`, `.kiosk-select` | Campos de formulario |
+| `.kiosk-topbar`, `.kiosk-main`, `.kiosk-footer` | Layout de página con logo arriba/abajo |
+| `.kiosk-form-grid` | Grid de 2 columnas para el formulario de registro (colapsa a 1 columna en pantallas angostas) |
+| `.kiosk-idle`, `.kiosk-idle-content`, `.kiosk-touch-badge` | Pantalla de espera: overlay con degradado + ícono de toque pulsante |
+| `.kiosk-settings-btn` | Botón de engranaje discreto para cambiar de módulo (ver [Resumen y flujo](./resumen-y-flujo#cómo-volver-a-la-selección-de-módulo)) |
+
+## IDs que el JavaScript espera tal cual
+
+Estos elementos **no se pueden renombrar** sin actualizar también
+`app/assets/js/IDT_app.js` y el script inline de `app/index.php`:
+
+| Selector | Para qué |
+|----------|----------|
+| `#contenedor_carga`, `#carga` | Loader de arranque (`loading()`) |
+| `.contenedor-medios` | Contenedor donde se inyecta la imagen/video del slideshow |
+| `#lp-preview-video`, `#lp-preview-image` | Creados dinámicamente por JS al cambiar de medio |
+| `#tiempo` | Div oculto que recibe el polling de `tiempo.php` |
+
+## Qué se corrigió de paso
+
+Al reescribir las vistas se eliminó `onsubmit="return marcado();"` de
+`login.php` y `registro.php`: llamaba a una función `marcado()` que no existe
+en ningún archivo del proyecto (bug preexistente). La validación `required`
+nativa de los campos ya cubre el caso de uso, así que no hizo falta
+reemplazarla por nada.

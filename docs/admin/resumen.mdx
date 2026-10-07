@@ -1,0 +1,44 @@
+---
+sidebar_position: 1
+title: Resumen
+---
+
+# Panel Administrativo — Resumen
+
+Panel web (Bootstrap 4 + jQuery) desde el que se gestiona todo lo que los
+kioscos muestran: contenido, programación, módulos registrados, usuarios del
+panel y reportes de uso.
+
+## Acceso
+
+- **URL:** `admin/index.php`
+- Login por **nombre de usuario o correo**.
+- Contraseña en hash **MD5** (ver [Seguridad y pendientes](../seguridad-y-pendientes)).
+- Sesión de **2 horas**. La opción "Mantener la sesión iniciada" guarda las
+  credenciales en cookie por 1 hora adicional.
+
+## Mapa de páginas
+
+| Página | Acceso | Qué hace |
+|--------|--------|----------|
+| `inicio.php` | Todos | Dashboard con accesos rápidos según el rol |
+| `contenido.php` / `editar_contenido.php` | Todos | Subir, ver, editar y eliminar imágenes/video |
+| `programacion.php` / `editar_programacion.php` | Todos | Crear y gestionar listas de reproducción con fecha de activación |
+| `frame.php` / `editar_frame.php` | Todos | Ver/editar la URL que se muestra en el `<iframe>` del kiosco |
+| `modulos.php` / `editar_modulo.php` | Todos | Registrar y editar los kioscos físicos |
+| `configuracion.php` / `editar_configuracion.php` | Todos | Tiempos de inactividad del kiosco y protector de pantalla de respaldo |
+| `usuarios.php` / `editar_usuario.php` | **Solo Administrador** | CRUD de usuarios del panel |
+| `perfil_usuario.php` | Todos | Editar el propio perfil |
+| `reporte_tabla.php` | **Solo Administrador** | Reporte general de interacciones |
+| `reporte_visitantes.php` | **Solo Administrador** | Listado de visitantes registrados |
+| `reporte_charts_genero.php` / `_edad.php` / `_tiempo.php` | **Solo Administrador** | Gráficas de uso (Chart.js) |
+
+Todas comparten dos parciales incluidos en cada página —
+`assets/php/menu_lateral.php` (sidebar) y `assets/php/menu_superior.php`
+(topbar)— que ya filtran qué opciones se ven según el rol.
+
+## Siguiente
+
+- [Gestión de contenido](./gestion-de-contenido) — contenido, programación, módulos y frame.
+- [Usuarios, roles y reportes](./usuarios-roles-y-reportes)
+- [Sistema de diseño](./diseno) — cómo está armado el tema visual

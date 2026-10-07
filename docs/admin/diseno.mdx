@@ -1,0 +1,110 @@
+---
+sidebar_position: 4
+title: Sistema de diseño
+---
+
+# Sistema de diseño del panel admin
+
+## El problema de partida
+
+La plantilla original (Bootstrap 4, comprada/genérica) es un tema **oscuro**:
+`body { background-color: #000; color: rgba(255,255,255,.85); }`, cards
+translúcidas (`background-color: rgba(0,0,0,.2)`) sobre una imagen de fondo,
+títulos y enlaces en blanco por defecto, y varios `color: #fff !important`
+en placeholders. El logo del sidebar y del login (`Logo_1.png`, `Logo_2.png`)
+son texto **blanco sobre transparente** — pensado para ese fondo oscuro.
+
+## Estrategia de reskin: un solo bloque de overrides
+
+En vez de reescribir el HTML de las 19 páginas del panel, se verificó que
+**todas** cargan, en el mismo orden, las mismas 5 hojas de estilo
+(`bootstrap.min.css`, `animate.css`, `icons.css`, `sidebar-menu.css`,
+`app-style.css`), con `app-style.css` siempre último — incluida
+`admin/index.php` (login), aunque esa página no incluye el sidebar/topbar.
+
+Eso permitió agregar **un solo bloque grande de CSS al final de
+`admin/assets/css/app-style.css`** que:
+
+- Define tokens de color en `:root` (misma paleta institucional que el
+  [kiosco](../kiosco/diseno), azul `#1B4F8C` + dorado `#F2A93C`).
+- Aplana `body.bg-theme*` a un fondo plano en vez del patrón de imagen.
+- Reescribe sidebar, topbar, `.card`, botones, formularios, tablas,
+  DataTables, el lightbox de Fancybox y la tarjeta de login — todo por
+  **cascada CSS**, reutilizando los mismos selectores que ya usaba la
+  plantilla (misma especificidad; al cargar después, gana).
+- Usa `!important` únicamente donde la plantilla original también lo usaba
+  (por ejemplo en `::placeholder`), para poder ganarle sin tener que inflar
+  la especificidad de cada selector.
+
+Esto llega a las 19 páginas **sin tocar su HTML**, porque todas comparten el
+mismo `<link>` a `app-style.css`.
+
+## Excepciones que sí necesitaron tocar código
+
+No todo era CSS puro — 5 puntos concretos requerían cambios de marcado o de
+un `<script>` inline:
+
+1. **`admin/assets/php/menu_lateral.php`** — el logo (`Logo_2.png`, texto
+   blanco invisible sobre el sidebar ahora claro) se reemplazó por el ícono
+   de la estrella (`Favicon.png`, a color) + el texto "IDT App" en azul.
+2. **`admin/index.php`** — mismo problema con `Logo_1.png`; se reemplazó por
+   `Logo_Alcaldia.png` (copia del logo institucional a color que ya usaba el
+   kiosco en `app/assets/img/Logos_Alcaldia.png`), visible sobre fondo
+   blanco.
+3. **`admin/inicio.php`** — las 5 tarjetas del dashboard usaban imágenes
+   tipo "botón" (`Edicion_button.png`, `Galeria_button.png`, etc.), un look
+   anticuado. Se reemplazaron por `.dash-icon-badge` — un círculo de color
+   con un ícono de Font Awesome/Material dentro.
+4. **Las 3 páginas de gráficas** (`reporte_charts_*.php`) — los colores de
+   Chart.js están en el `<script>`, no en CSS; se actualizaron ahí
+   directamente (ver [Usuarios, roles y reportes](./usuarios-roles-y-reportes#reportes-solo-administrador)).
+5. **`admin/assets/php/menu_lateral.php`** — se quitó un `style="width:180px"`
+   inline en el logo, movido a una clase CSS.
+
+Todo lo demás (`contenido.php`, `programacion.php`, `modulos.php`,
+`usuarios.php`, los `editar_*.php`, `perfil_usuario.php`, los reportes de
+tabla) se transformó con **cero cambios de HTML**.
+
+## Tokens (en `:root`, al final de `app-style.css`)
+
+```css
+--color-primary: #1B4F8C;
+--color-primary-dark: #123B6B;
+--color-primary-light: #EAF1FA;
+--color-accent: #F2A93C;
+--color-bg: #F7F8FA;
+--color-surface: #FFFFFF;
+--color-surface-alt: #F3F5F8;
+--color-border: #E4E7EC;
+--color-text: #1F2430;
+--color-text-muted: #6B7280;
+--color-success: #1FA97A;
+--color-danger: #E5484D;
+```
+
+## Por qué sidebar/topbar claros (y no un tema oscuro)
+
+Se evaluaron ambas opciones; se eligió un sidebar/topbar **claro** (blanco,
+con el azul institucional como acento en hover/activo) porque encaja mejor
+con el pedido de "moderno, limpio, minimalista" que un dashboard oscuro tipo
+SaaS clásico — y porque la mayoría del contenido del panel (tablas, galería
+de imágenes) se lee mejor sobre fondo claro.
+
+## Tipografía
+
+`'Segoe UI', system-ui, -apple-system, Roboto, sans-serif` — la fuente nativa
+de Windows, sin cargar nada adicional (coherente con que el panel también
+puede operarse desde el mismo tipo de equipo que los pedestales).
+
+## Plugins que siguen activos vs. vestigiales
+
+| Activo (el reskin lo cubre) | Cargado pero sin usar (no requiere trabajo) |
+|---|---|
+| Fancybox (lightbox de galería) | Dropzone |
+| DataTables (`reporte_tabla.php`, `reporte_visitantes.php`) | Summernote |
+| Chart.js (los 3 reportes de gráficas) | Select2 |
+| | jquery.steps (wizard) |
+
+No se removieron los includes vestigiales — no rompen nada, pero tampoco
+hacía falta invertir tiempo de diseño en componentes que ninguna página usa
+realmente.

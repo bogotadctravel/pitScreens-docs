@@ -1,0 +1,8 @@
+{
+  "label": "Panel Administrativo (admin/)",
+  "position": 6,
+  "link": {
+    "type": "generated-index",
+    "description": "El panel web para gestionar contenido, programación, módulos, usuarios y reportes."
+  }
+}

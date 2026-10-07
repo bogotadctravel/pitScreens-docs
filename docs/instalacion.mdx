@@ -1,0 +1,131 @@
+---
+sidebar_position: 2
+---
+
+# Instalación local
+
+Estos pasos reflejan la puesta en marcha real verificada en un equipo Windows
+con **XAMPP** (Apache + MySQL/MariaDB + PHP 8.2).
+
+## Requisitos
+
+| Componente | Versión usada / mínima |
+|------------|-------------------------|
+| PHP | 7.2+ (probado en 8.2.12) |
+| MySQL / MariaDB | 5.7+ |
+| Apache | Cualquier versión actual |
+| Extensión PHP cURL | Habilitada (la usa `app/proxy.php`) |
+| Extensión PHP MySQLi | Habilitada |
+
+## 1. Ubicar el proyecto donde las rutas lo esperan
+
+El código tiene URLs **fijas** a `http://localhost/IDT_app/...` (en
+`app/index.php`, para las rutas de imágenes/video del slideshow — ver
+[Arquitectura](./arquitectura)), así que el proyecto debe quedar accesible
+exactamente en esa ruta.
+
+Con XAMPP, la forma más simple —sin mover el repositorio— es crear un
+**junction** de Windows desde `htdocs` hacia la carpeta del repo:
+
+```bash
+mklink /J C:\xampp\htdocs\IDT_app B:\repos\pitScreens
+```
+
+(Si prefieres copiar el proyecto en vez de enlazarlo, sigue el ejemplo del
+`README.md` de la raíz: `cp -r pitScreens/ /var/www/html/IDT_app/`.)
+
+## 2. Crear la base de datos
+
+```sql
+CREATE DATABASE idt_app CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+## 3. Importar el esquema
+
+El archivo `idt_app.sql` en la raíz del repo trae la estructura de tablas y
+datos semilla (módulos, funciones de usuario, una programación por defecto):
+
+```bash
+mysql -u root idt_app < idt_app.sql
+```
+
+## 4. Configurar la conexión a la base de datos
+
+Hay **dos** archivos de conexión, uno por módulo — deben apuntar a la misma
+base de datos `idt_app`:
+
+- `admin/assets/php/Conexion_DB.php`
+- `app/assets/php/Conexion_DB.php`
+
+```php title="admin/assets/php/Conexion_DB.php y app/assets/php/Conexion_DB.php"
+$host_db    = "localhost";
+$usuario_db = "root";
+$clave_db   = "";
+$nombre_db  = "idt_app";
+
+$conexion = mysqli_connect($host_db, $usuario_db, $clave_db, $nombre_db);
+mysqli_set_charset($conexion, 'utf8mb4');
+```
+
+:::warning Charset UTF-8
+La llamada a `mysqli_set_charset($conexion, 'utf8mb4')` es imprescindible. Sin
+ella, MySQL negocia el charset por defecto del servidor (`cp850` en muchas
+instalaciones de XAMPP) y los acentos/eñes se guardan corruptos al escribir
+desde el formulario de registro de visitantes. Ya está aplicada en ambos
+archivos de conexión — si algún día se recrean desde cero, no se debe olvidar.
+:::
+
+Existe un tercer archivo, `admin/assets/php/Conexion_Reco.php`, que apunta a
+una base `electronika` — es para una integración futura con un sistema externo
+de reconocimiento facial (tabla `reco`) y **no está incluido desde ninguna
+página activa**. No hace falta configurarlo para que la app funcione.
+
+## 5. Crear la carpeta de subida de contenido
+
+`admin/assets/galeria/` es donde se guardan las imágenes/videos subidos desde
+el panel — no viene versionada en git (carpeta vacía) y hay que crearla a
+mano:
+
+```bash
+mkdir admin/assets/galeria
+```
+
+## 6. Levantar Apache y MySQL
+
+Con el XAMPP Control Panel, o desde línea de comandos:
+
+```bash
+# MySQL
+C:\xampp\mysql\bin\mysqld --defaults-file=C:\xampp\mysql\bin\my.ini --standalone
+
+# Apache
+C:\xampp\apache\bin\httpd.exe
+```
+
+## 7. Acceder
+
+- Panel administrativo: `http://localhost/IDT_app/admin/`
+- Pantalla del kiosco: `http://localhost/IDT_app/app/`
+
+Credenciales de referencia para desarrollo local (ver
+[Usuarios y roles](./admin/usuarios-roles-y-reportes) para más detalle):
+
+| Rol | Correo | Contraseña |
+|-----|--------|------------|
+| Administrador | `web@electronika.info` | `123456` |
+| Colaborador | `demo@idt.gov.co` | `123456` |
+
+:::danger Solo para desarrollo local
+Las contraseñas se guardan con **MD5** (no `password_hash`/`bcrypt`). Cambia
+las contraseñas por defecto antes de exponer el panel fuera de una red local
+de confianza. Más detalle en [Seguridad y pendientes](./seguridad-y-pendientes).
+:::
+
+## Errores comunes al instalar
+
+| Síntoma | Causa | Solución |
+|---------|-------|----------|
+| El kiosco no guarda visitantes / pantalla en blanco en `app/` | `app/assets/php/Conexion_DB.php` apuntando a una base que no existe | Verificar que `$nombre_db = "idt_app"` (el archivo trae por defecto `"supersubsidio"` en versiones sin corregir, resto de una plantilla previa) |
+| Tildes/eñes se ven como `?` al guardar un visitante o usuario | Falta `mysqli_set_charset($conexion, 'utf8mb4')` | Agregarlo justo después de `mysqli_connect(...)` en ambos `Conexion_DB.php` |
+| El slideshow del kiosco no carga imágenes/video subidos | Falta la carpeta `admin/assets/galeria/` | Crearla manualmente (paso 5) |
+| El `iframe` de contenido (`frame.php`) no carga nada | `proxy.php` depende de cURL y de que haya salida a internet | Confirmar `extension=curl` habilitada en `php.ini` y conectividad de red |

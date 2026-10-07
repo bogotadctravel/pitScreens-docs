@@ -1,0 +1,118 @@
+---
+sidebar_position: 1
+title: Resumen y flujo de pantallas
+---
+
+# Módulo Kiosco — Resumen y flujo
+
+Es lo que corre en el pedestal físico, a pantalla completa, sin mouse — solo
+toque. El objetivo del diseño es que cualquier persona lo entienda sin
+instrucciones.
+
+## Mapa de archivos
+
+| Archivo | Función |
+|---------|---------|
+| `log_index.php` | Configuración inicial: el operador elige a qué módulo/kiosco corresponde esta pantalla. Se guarda por **1 año** en sesión. |
+| `index.php` | Pantalla de espera: slideshow automático de la programación activa + "Toca la pantalla para comenzar". |
+| `login.php` | Pide el número de documento (compatible con lector de código de barras). |
+| `comprobacion.php` | Busca el documento en `visitantes`; redirige según si ya existe. |
+| `registro.php` | Formulario para visitantes nuevos (tipo/número de documento, nombres, apellidos, aceptación de política de datos). |
+| `datos_visitantes.php` | Guarda el registro nuevo en la base de datos. |
+| `frame.php` | Muestra el sitio del IDT en un `<iframe>`, vía `proxy.php`. |
+| `proxy.php` | Descarga con cURL la URL configurada en la tabla `frame` y la re-sirve, para evitar el bloqueo por `X-Frame-Options`. |
+| `tiempo.php` | Endpoint AJAX sondeado cada segundo desde `index.php` para detectar cambios de programación. |
+| `activacion.php` | Activa una programación y desactiva las demás según la fecha. |
+
+## Flujo del visitante
+
+```
+1. PANTALLA DE ESPERA (index.php)
+   Slideshow + "Toca la pantalla para comenzar"
+          │ (toca en cualquier parte de la pantalla)
+          ▼
+2. DOCUMENTO (login.php)
+          │
+          ▼
+3. VERIFICACIÓN (comprobacion.php)
+   ├── ya registrado ──────────────► frame.php
+   └── nuevo ──► registro.php ──► datos_visitantes.php ──► frame.php
+          
+4. CONTENIDO (frame.php)
+   Sitio del IDT en iframe. Tras un rato de inactividad,
+   vuelve solo a la pantalla de espera.
+```
+
+Toda la superficie de `index.php` es un único enlace a `frame.php` — no hay
+que acertarle a un botón pequeño, **tocar en cualquier parte** de la pantalla
+de espera avanza al flujo de registro.
+
+## Detección de inactividad
+
+Dos temporizadores independientes, reiniciados en cada toque/clic. El tiempo
+de espera de cada uno **ya no está fijo en el JS** — se lee de la tabla
+`configuracion` (ver [Base de datos](../base-de-datos#configuracion)): cada
+página inyecta `<script>var IDT_TIMEOUT_MS = …;</script>` (segundos × 1000)
+antes de cargar el script de inactividad, y este lo usa si existe
+(`typeof IDT_TIMEOUT_MS !== 'undefined'`), con el valor original como
+respaldo si la fila de configuración no existe.
+
+| Script | Dónde se usa | Columna en `configuracion` | Valor por defecto | Al vencer |
+|--------|--------------|------------------------------|--------------------|-----------|
+| `Inactividad1.js` | `login.php`, `registro.php` | `Tiempo_Inactividad_Kiosco` | 60 segundos | Vuelve a `index.php` |
+| `Inactividad2.js` | `frame.php` | `Tiempo_Inactividad_Contenido` | 900 segundos (15 min) | Vuelve a `index.php` |
+
+Se edita desde [Configuración del panel admin](../admin/gestion-de-contenido#configuración-configuracionphp).
+
+## Cómo volver a la selección de módulo
+
+`log_index.php` solo se muestra la primera vez (o si se limpia la sesión) —
+una vez elegido el módulo, la sesión dura un año y todas las demás pantallas
+redirigen automáticamente si no encuentran esa sesión activa.
+
+Para reconfigurar el módulo de un pedestal sin tocar la base de datos ni las
+cookies a mano, hay un botón discreto: un **ícono de engranaje (⚙)**, pequeño
+y semitransparente, en la esquina superior derecha de la pantalla de espera
+(`index.php`). Pensado para que el operador lo encuentre pero el público en
+general no lo note ni lo toque por accidente:
+
+1. Toca el engranaje.
+2. Confirma en el cuadro de diálogo ("¿Cambiar el módulo asignado a este
+   punto?").
+3. Se limpia la sesión del módulo (`assets/php/logout.php`) y vuelve a
+   `log_index.php` para elegir uno nuevo.
+
+## Reproducción de contenido
+
+- **Imágenes:** se muestran 10 segundos (`setTimeout` en JS).
+- **Video (MP4):** se reproduce completo; al terminar (`evento ended`) pasa
+  al siguiente elemento.
+- **Sin contenido configurado:** reproduce el protector de pantalla
+  configurado en `admin/configuracion.php` (tabla `configuracion`,
+  `Protector_URL`/`Protector_Tipo`; por defecto `IDT.mp4`) — ya no es un
+  archivo fijo.
+- Al llegar al último elemento de la lista, vuelve al primero (loop).
+
+### Contenido general vs. contenido por módulo
+
+`app/index.php` resuelve qué `lista-reproduccion` mostrar en este orden:
+
+1. **Primero busca una programación propia de este módulo:** una fila de
+   `lista-reproduccion` con `Modulo` igual al módulo de esta pantalla
+   (`$_SESSION['modulo']`) y `Fecha-Inicio <= NOW()`. Si existe, se usa
+   directo — esta resolución es de **solo lectura**, no toca `Estado`.
+2. **Si no hay ninguna para este módulo, cae al mecanismo general:** busca
+   la programación más reciente con `Modulo IS NULL OR Modulo = ''` y
+   `Fecha-Inicio <= NOW()`, la activa (`Estado = '1'`) y desactiva las demás
+   programaciones generales (las de módulo específico no participan de este
+   switcheo porque no usan `Estado`).
+
+Como el paso 1 no muta `Estado`, varios módulos pueden tener contenido
+propio y distinto **al mismo tiempo** sin pisarse entre sí. El contenido
+general sigue siendo "uno solo activo a la vez en todo el sistema" — eso no
+cambió.
+
+Ver [Base de datos](../base-de-datos#lista-reproduccion) para el campo
+`Modulo`, y [Panel Administrativo](../admin/gestion-de-contenido) para cómo
+se sube y programa ese contenido (incluyendo el selector de módulo al crear
+una programación).

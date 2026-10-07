@@ -1,0 +1,100 @@
+---
+sidebar_position: 2
+title: Gestión de contenido
+---
+
+# Gestión de contenido, programación, módulos y frame
+
+## Contenido (`contenido.php`)
+
+1. Selecciona un archivo — **PNG, JPEG o MP4, máximo 80 MB** (validado en el
+   navegador antes de subir).
+2. Elige el estado (Activo/Inactivo) y el número de orden dentro de la
+   lista.
+3. Asigna a qué lista de reproducción pertenece.
+4. Al guardar, el archivo se copia a `admin/assets/galeria/` y se registra
+   en la tabla `contenido` (ver [Base de datos](../base-de-datos#contenido)).
+
+La galería se muestra debajo, separada en imágenes y videos, con una vista
+previa tipo lightbox (Fancybox) para las imágenes. Desde ahí se edita
+(`editar_contenido.php`) o se elimina cada elemento.
+
+:::info
+La página también carga los scripts de Dropzone, Summernote y Select2, pero
+**ninguno está conectado a un elemento real del formulario** — es código
+vestigial de la plantilla original. El campo de subida es un
+`<input type="file">` nativo con un validador JS propio (`validarFile()`).
+:::
+
+## Programación (`programacion.php`)
+
+Una "programación" (`lista-reproduccion`) agrupa contenido bajo un nombre y
+una fecha/hora de activación:
+
+1. Crear una programación con nombre y fecha de inicio.
+2. Elegir el **Alcance**: "General (todos los módulos)" o un módulo
+   específico de la tabla `modulos`. Deja la columna `Modulo` en `NULL` o
+   con el nombre elegido, respectivamente.
+3. El sistema la activa automáticamente cuando llega esa fecha/hora —
+   revisado en cada carga de `app/index.php` (ver
+   [Flujo del kiosco](../kiosco/resumen-y-flujo#contenido-general-vs-contenido-por-módulo)).
+4. **Solo una programación general** está activa a la vez; el campo
+   `Estado` no se edita a mano en condiciones normales, lo gestiona el
+   sistema, y solo compite con otras programaciones generales. Una
+   programación de módulo específico no usa `Estado` — se resuelve por
+   fecha directamente, así que puede coexistir con la general y con la de
+   otros módulos sin pisarlas.
+
+La tabla de "Configuración Actual" en esta misma página lista todas las
+programaciones existentes con su columna **Módulo** (muestra "General" si
+está vacía) para que sea fácil ver de un vistazo qué módulos tienen
+contenido propio.
+
+## Frame (`frame.php` / `editar_frame.php`)
+
+Configura la **única** URL externa que se muestra en el `<iframe>` de
+`app/frame.php` (tabla `frame`, un solo registro). Es el sitio del IDT (o
+cualquier otro) que ve el visitante después de registrarse.
+
+:::warning
+`app/proxy.php` no valida que la URL pertenezca a un dominio autorizado antes
+de descargarla con cURL — ver [Seguridad y pendientes](../seguridad-y-pendientes).
+:::
+
+## Módulos (`modulos.php` / `editar_modulo.php`)
+
+Registro de los kioscos/pantallas físicas del sistema (nombre + ubicación,
+p. ej. *"Módulo 1 — Terminal de Transportes"*). Es la lista que aparece en
+el selector de `app/log_index.php` cuando se configura un pedestal nuevo o
+se usa el botón de [cambiar módulo](../kiosco/resumen-y-flujo#cómo-volver-a-la-selección-de-módulo),
+y también la que llena el selector de **Alcance** al crear una programación.
+
+## Configuración (`configuracion.php`)
+
+Vista de solo lectura de la fila única de la tabla `configuracion` (mismo
+patrón que `frame`): los dos tiempos de inactividad del kiosco y el
+protector de pantalla de respaldo, con una vista previa del archivo actual
+(video o imagen). El botón "Editar configuración" lleva a
+`editar_configuracion.php`.
+
+`editar_configuracion.php` tiene:
+
+1. Dos campos numéricos **en segundos** — inactividad en
+   documento/registro (`Tiempo_Inactividad_Kiosco`, usado por
+   `Inactividad1.js`) e inactividad en la pantalla de contenido
+   (`Tiempo_Inactividad_Contenido`, usado por `Inactividad2.js`). Ver
+   [Detección de inactividad](../kiosco/resumen-y-flujo#detección-de-inactividad).
+2. Un campo de archivo **opcional** para el protector de pantalla —
+   **PNG, JPEG o MP4, máximo 80 MB** (mismo límite que `contenido.php`). Si
+   se deja vacío, se conserva el archivo que ya estaba configurado. El
+   archivo subido se copia a `admin/assets/galeria/` — el mismo folder que
+   usa `contenido.php`, no una carpeta aparte — y el tipo (`video`/`image`)
+   se deduce del MIME type subido.
+
+:::info
+El archivo se guarda en `admin/assets/galeria/` para reutilizar la misma
+carpeta, pero **no se registra en la tabla `contenido`** — la galería de
+`contenido.php` lista archivos consultando esa tabla (no escaneando la
+carpeta), así que el protector de pantalla no aparece ahí; solo se referencia
+desde `configuracion.Protector_URL`.
+:::

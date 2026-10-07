@@ -1,0 +1,126 @@
+---
+sidebar_position: 4
+---
+
+# Base de datos
+
+**Nombre:** `idt_app` · **Motor:** MySQL/MariaDB, tablas InnoDB, charset `utf8mb4`.
+
+El esquema completo (estructura + datos semilla) está en `idt_app.sql` en la
+raíz del repositorio.
+
+## Tablas
+
+### `usuarios`
+
+Usuarios del panel administrativo.
+
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| `ID` | int, PK, autoincrement | |
+| `Nombre` | varchar(80) | |
+| `Correo` | varchar(80) | login por nombre **o** correo |
+| `Foto_Usuario` | varchar(80) | ruta relativa a la imagen de perfil |
+| `Funcion` | int, FK → `funciones_usuario.ID` | rol |
+| `Password` | varchar(50) | hash **MD5** |
+
+### `funciones_usuario`
+
+Catálogo de roles. Datos semilla: `1 = Administrador`, `2 = Colaborador`.
+
+### `lista-reproduccion`
+
+Programaciones (horarios de contenido).
+
+| Campo | Notas |
+|-------|-------|
+| `Nombre` | nombre descriptivo |
+| `Modulo` | varchar(150), NULL. Nombre del módulo al que pertenece esta programación (mismo patrón de texto libre que `visitantes.modulo`/`reco.modulo`, sin FK). `NULL`/vacío = programación **general**, visible para todos los módulos que no tengan la suya propia |
+| `Fecha-Inicio` | fecha/hora en que debe activarse |
+| `Estado` | `1` activo / `0` inactivo — **lo gestiona el sistema automáticamente** en `app/index.php` y `app/activacion.php`, pero **solo entre las programaciones generales** (`Modulo IS NULL OR Modulo = ''`); no se edita a mano en condiciones normales |
+| `Fecha-Modificacion`, `Usuario` | auditoría manual |
+
+Solo una programación **general** puede estar `Estado = 1` a la vez. Las
+programaciones atadas a un módulo específico no usan `Estado`: se resuelven
+por lectura directa (la más reciente con `Fecha-Inicio <= NOW()` para ese
+módulo), así que varios módulos pueden tener contenido propio y distinto
+**al mismo tiempo**, sin pisarse entre sí ni con el contenido general. Ver
+[Flujo del kiosco](./kiosco/resumen-y-flujo#reproducción-de-contenido) para
+el orden exacto en que `app/index.php` resuelve esto.
+
+### `contenido`
+
+Archivos multimedia (imágenes/video) asignados a una lista de reproducción.
+
+| Campo | Notas |
+|-------|-------|
+| `URL` | nombre del archivo en `admin/assets/galeria/` |
+| `Tipo` | `'image'` o `'video'` |
+| `Estado` | Activo/Inactivo |
+| `Orden` | posición en la reproducción |
+| `Lista-Reproduccion` | FK → `lista-reproduccion.ID` (`ON UPDATE CASCADE`) |
+
+### `frame`
+
+Tabla de una sola URL: la página externa que se muestra en el `<iframe>` del
+kiosco (`app/frame.php` vía `app/proxy.php`).
+
+### `configuracion`
+
+Fila única (mismo patrón que `frame`) con el protector de pantalla y los
+tiempos de inactividad del kiosco. La edita
+[`admin/editar_configuracion.php`](./admin/gestion-de-contenido#configuración-configuracionphp)
+y la leen `app/login.php`, `app/registro.php`, `app/frame.php` (tiempos) y
+`app/index.php` (protector de respaldo).
+
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| `ID` | int, PK, autoincrement | |
+| `Tiempo_Inactividad_Kiosco` | int, default `60` | segundos de inactividad en `login.php`/`registro.php` antes de volver a `index.php` (`Inactividad1.js`) |
+| `Tiempo_Inactividad_Contenido` | int, default `900` | segundos de inactividad en `frame.php` antes de volver a `index.php` (`Inactividad2.js`) |
+| `Protector_URL` | varchar(150), default `IDT.mp4` | nombre del archivo en `admin/assets/galeria/` (mismo folder que usa `contenido.php`, no una carpeta aparte) |
+| `Protector_Tipo` | varchar(10), default `video` | `'video'` o `'image'` |
+| `Fecha-Modificacion`, `Usuario` | | auditoría manual |
+
+`Protector_URL`/`Protector_Tipo` son el contenido que `app/index.php`
+reproduce cuando la programación activa (general o de módulo) no tiene
+ningún elemento en `contenido` — antes era el archivo fijo
+`assets/media/IDT.mp4`, ahora es configurable desde el admin.
+
+### `modulos`
+
+Los kioscos/pantallas físicas registradas (nombre + ubicación). Es lo que se
+elige en `app/log_index.php` al configurar cada pedestal.
+
+### `visitantes`
+
+Historial de personas que se registraron en un kiosco (tipo y número de
+documento, nombres, apellidos, módulo, fecha de ingreso).
+
+### `reco`
+
+Estadísticas de uso (edad, género, tiempo, expresión) capturadas por un
+sistema externo de reconocimiento — **sin página activa que la consuma hoy**
+(ver [Arquitectura](./arquitectura#archivos-muertos-conocidos)).
+
+## Relaciones
+
+```
+funciones_usuario 1───N usuarios
+
+lista-reproduccion 1───N contenido
+
+modulos, frame, configuracion, visitantes, reco → tablas independientes,
+no por llave foránea. lista-reproduccion.Modulo, visitantes.modulo y
+reco.modulo se relacionan con modulos.nombre_modulo por convención
+(nombre de módulo como texto), no por llave foránea.
+```
+
+## Notas de diseño a tener presente
+
+- Los nombres de columnas usan **guiones** en algunos casos (`Lista-Reproduccion`,
+  `Fecha-Inicio`, `Fecha-Modificacion`) — en SQL van entre backticks. Es
+  inconsistente con el resto (que usa guion bajo o nada), pero así está en
+  producción; no se ha normalizado para no romper consultas existentes.
+- No hay llaves foráneas para `modulos`/`frame`/`visitantes` — la integridad
+  referencial ahí depende de la aplicación, no de la base de datos.
