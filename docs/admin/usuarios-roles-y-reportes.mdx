@@ -9,30 +9,48 @@ title: Usuarios, roles y reportes
 
 | Rol | Permisos |
 |-----|----------|
-| **Administrador** | Acceso total: contenido, programación, frame, módulos, usuarios, reportes |
+| **Administrador** | Acceso total: contenido, módulos, usuarios, reportes |
 | **Colaborador** | Todo lo anterior **excepto** usuarios y reportes |
 
 El rol se asigna al crear o editar un usuario desde `usuarios.php` (solo
 visible/accesible para Administradores). Cada página protegida por rol repite
 la misma comprobación: `if($funcion_user == 'Administrador') { ... }`.
 
-## Usuarios (`usuarios.php` / `editar_usuario.php` / `perfil_usuario.php`)
+## Usuarios (`usuarios.php` / `nuevo_usuario.php` / `editar_usuario.php` / `perfil_usuario.php`)
 
-- Alta de usuario: nombre, correo, foto de perfil (opcional), función/rol y
-  contraseña.
+- `usuarios.php` solo lista los usuarios existentes; el alta vive en
+  `nuevo_usuario.php` ("+ Nuevo usuario"): nombre, correo, foto de perfil
+  (opcional), función/rol y contraseña.
 - La contraseña se guarda como `MD5($contraseña)` — no hay verificación de
   fortaleza ni confirmación de contraseña en el formulario.
 - `perfil_usuario.php` permite a cualquier usuario editar su propio perfil.
+- Eliminar un usuario desde el listado muestra un modal de confirmación con
+  su nombre (antes no tenía ninguna confirmación).
 
 ## Reportes (solo Administrador)
 
-| Página | Contenido |
-|--------|-----------|
-| `reporte_tabla.php` | Tabla general de interacciones (módulo, edad, género, tiempo), con exportado vía DataTables (Excel/PDF/imprimir) |
-| `reporte_visitantes.php` | Listado completo de visitantes registrados, también con DataTables |
-| `reporte_charts_genero.php` | Gráfica de barras/torta por género (Chart.js) |
-| `reporte_charts_edad.php` | Gráfica por rango de edad |
-| `reporte_charts_tiempo.php` | Gráfica de tiempo promedio de uso |
+El menú lateral solo enlaza a `reporte_pantallas.php` — a pedido del
+cliente ("De reportes solo debería abrir la pantalla de Reporte de
+Pantallas, no mostrar nada más"), que ya no quiere el submenú con las
+otras opciones. Las demás páginas **no se borraron**: siguen existiendo y
+funcionando, solo que ya no tienen enlace en el menú y se accede a ellas
+por URL directa.
+
+| Página | Contenido | En el menú |
+|--------|-----------|------------|
+| `reporte_pantallas.php` | Resumen de inicios de reproducción (evento `SCREEN_STARTED`) agrupados por pantalla, más el listado completo de eventos de `eventos_pantalla` — también con DataTables | Sí |
+| `reporte_tabla.php` | Tabla general de interacciones (pantalla, edad, género, tiempo), con exportado vía DataTables (Excel/PDF/imprimir) | No — solo por URL directa |
+| `reporte_visitantes.php` | Listado completo de visitantes registrados, también con DataTables | No — solo por URL directa |
+| `reporte_charts_genero.php` | Gráfica de barras/torta por género (Chart.js) | No — solo por URL directa |
+| `reporte_charts_edad.php` | Gráfica por rango de edad | No — solo por URL directa |
+| `reporte_charts_tiempo.php` | Gráfica de tiempo promedio de uso | No — solo por URL directa |
+
+`reporte_pantallas.php` es una métrica de **uso real del kiosco** (cuántas
+veces se tocó el protector de pantalla en cada punto), independiente de
+`reco` — no depende del sistema externo de reconocimiento facial, así que
+funciona aunque ese sistema no esté conectado. Ver
+[Base de datos](../base-de-datos#eventos_pantalla) y
+[Sincronización en vivo](../kiosco/resumen-y-flujo#sincronización-en-vivo).
 
 Las tres páginas de gráficas comparten estructura: un formulario de rango de
 fechas, un `<canvas>` con Chart.js, y un botón "Guardar gráfico" que exporta

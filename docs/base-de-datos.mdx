@@ -32,6 +32,16 @@ Catálogo de roles. Datos semilla: `1 = Administrador`, `2 = Colaborador`.
 
 Programaciones (horarios de contenido).
 
+:::info
+El panel ya no tiene una página dedicada para crear/editar programaciones
+nuevas (`admin/programacion.php` y afines se eliminaron — ver
+[Gestión de contenido](./admin/gestion-de-contenido)). La fila **general**
+(`Modulo IS NULL`, la lista "Default") sigue existiendo y sigue siendo el
+contenido de respaldo para pantallas sin contenido propio; las filas por
+pantalla se siguen creando desde
+[`admin/editar_modulo.php`](./admin/gestion-de-contenido#pantallas-modulosphp--editar_modulophp).
+:::
+
 | Campo | Notas |
 |-------|-------|
 | `Nombre` | nombre descriptivo |
@@ -50,47 +60,116 @@ el orden exacto en que `app/index.php` resuelve esto.
 
 ### `contenido`
 
-Archivos multimedia (imágenes/video) asignados a una lista de reproducción.
+Cada fila es una **publicación**: un archivo de la
+[`biblioteca`](#biblioteca) dentro de una lista de reproducción, con su
+orden, estado y ventana de publicación. El mismo archivo puede estar
+publicado en varias listas (una fila por lista); dentro de una misma lista
+no se duplica (publicarlo de nuevo reprograma la fila existente).
 
-| Campo | Notas |
-|-------|-------|
-| `URL` | nombre del archivo en `admin/assets/galeria/` |
-| `Tipo` | `'image'` o `'video'` |
-| `Estado` | Activo/Inactivo |
-| `Orden` | posición en la reproducción |
-| `Lista-Reproduccion` | FK → `lista-reproduccion.ID` (`ON UPDATE CASCADE`) |
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| `URL` | varchar(255) | nombre del archivo en `admin/assets/galeria/` (mismo valor que `biblioteca.URL`, la relación es por nombre, sin FK) |
+| `Tipo` | | `'image'` o `'video'` |
+| `Estado` | | `1` activo / `0` inactivo |
+| `Orden` | | posición en la reproducción; el kiosco ordena por su valor numérico (`CAST(Orden AS SIGNED)`) |
+| `Fecha_Inicio` | datetime, NULL | desde cuándo se muestra. `NULL` = sin límite (desde ya) |
+| `Fecha_Fin` | datetime, NULL | hasta cuándo se muestra (exclusivo). `NULL` = sin fin |
+| `Lista-Reproduccion` | | FK → `lista-reproduccion.ID` (`ON UPDATE CASCADE`) |
+| `Fecha_Modificación`, `Usuario` | | auditoría |
 
-### `frame`
+El kiosco solo reproduce las filas con `Estado = 1` y dentro de su ventana
+(`Fecha_Inicio IS NULL OR Fecha_Inicio <= ahora` y
+`Fecha_Fin IS NULL OR Fecha_Fin > ahora`) — así un contenido se publica y se
+retira solo en las fechas programadas (ver
+[Sincronización en vivo](./kiosco/resumen-y-flujo#sincronización-en-vivo)).
+En el admin, cada publicación se muestra con un estado efectivo:
+**Publicado**, **Programado** (aún no llega `Fecha_Inicio`), **Finalizado**
+(ya pasó `Fecha_Fin`) o **Inactivo** (`Estado = 0`).
 
-Tabla de una sola URL: la página externa que se muestra en el `<iframe>` del
-kiosco (`app/frame.php` vía `app/proxy.php`).
+### `biblioteca`
 
-### `configuracion`
-
-Fila única (mismo patrón que `frame`) con el protector de pantalla y los
-tiempos de inactividad del kiosco. La edita
-[`admin/editar_configuracion.php`](./admin/gestion-de-contenido#configuración-configuracionphp)
-y la leen `app/login.php`, `app/registro.php`, `app/frame.php` (tiempos) y
-`app/index.php` (protector de respaldo).
+Un registro por archivo subido a `admin/assets/galeria/`, esté publicado o
+no. Permite subir contenido sin asignarlo todavía a ninguna pantalla y
+reutilizar el mismo archivo en varias. La gestiona
+[`admin/contenido.php`](./admin/gestion-de-contenido#contenido-contenidophp).
 
 | Campo | Tipo | Notas |
 |-------|------|-------|
 | `ID` | int, PK, autoincrement | |
+| `URL` | varchar(255), **único** | nombre del archivo en `admin/assets/galeria/` |
+| `Tipo` | varchar(10) | `'image'` o `'video'` |
+| `Fecha_Subida` | datetime | |
+| `Usuario` | varchar(50) | quién lo subió |
+
+`migracion_v5.sql` la crea y la puebla con los archivos que ya estaban
+publicados en `contenido` (uno por `URL` distinto). El protector de pantalla
+subido desde Configuración **no** se registra aquí.
+
+### `frame`
+
+Tabla de una sola URL que antes definía la página externa del `<iframe>` del
+kiosco.
+
+:::info
+Ya **no la lee ningún archivo**: `app/frame.php` toma su URL de
+`configuracion.URL_Destino` (ver abajo) y el panel tampoco tiene página para
+editarla (`admin/frame.php`/`editar_frame.php` se eliminaron). La tabla sigue
+existiendo en la base de datos sin ningún efecto.
+:::
+
+### `configuracion`
+
+Tiempos de inactividad del kiosco y protector de pantalla, con el mismo
+patrón general/específico que `lista-reproduccion.Modulo`: puede haber una
+fila **general** (`Modulo IS NULL`) y, opcionalmente, una fila **por
+pantalla** que la sobreescribe. La edita
+[`admin/editar_configuracion.php`](./admin/gestion-de-contenido#configuración-configuracionphp)
+(fila general) o [`admin/editar_modulo.php`](./admin/gestion-de-contenido#pantallas-modulosphp--editar_modulophp)
+(fila de una pantalla puntual), y la leen `app/login.php`, `app/registro.php`,
+`app/frame.php` (tiempos y URL de destino) y `app/index.php` (protector y
+URL de destino).
+
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| `ID` | int, PK, autoincrement | |
+| `Modulo` | varchar(150), NULL | `NULL` = configuración **general** (fallback); con un nombre de pantalla = override específico de esa pantalla |
 | `Tiempo_Inactividad_Kiosco` | int, default `60` | segundos de inactividad en `login.php`/`registro.php` antes de volver a `index.php` (`Inactividad1.js`) |
 | `Tiempo_Inactividad_Contenido` | int, default `900` | segundos de inactividad en `frame.php` antes de volver a `index.php` (`Inactividad2.js`) |
 | `Protector_URL` | varchar(150), default `IDT.mp4` | nombre del archivo en `admin/assets/galeria/` (mismo folder que usa `contenido.php`, no una carpeta aparte) |
 | `Protector_Tipo` | varchar(10), default `video` | `'video'` o `'image'` |
+| `URL_Destino` | varchar(255), default `''` | URL externa a la que navega el kiosco cuando el visitante toca la pantalla (se muestra en `app/frame.php` vía `proxy.php`). Vacío = sin configurar: el toque no hace nada. En una fila de pantalla, vacío al guardar toma el valor de la general |
 | `Fecha-Modificacion`, `Usuario` | | auditoría manual |
 
-`Protector_URL`/`Protector_Tipo` son el contenido que `app/index.php`
-reproduce cuando la programación activa (general o de módulo) no tiene
-ningún elemento en `contenido` — antes era el archivo fijo
-`assets/media/IDT.mp4`, ahora es configurable desde el admin.
+Todas las páginas que leen `configuracion` resuelven primero la fila
+específica de la pantalla actual (`Modulo` = su nombre) y, si no existe,
+caen a la fila general (`Modulo IS NULL`).
+
+`Protector_URL`/`Protector_Tipo` (de la fila que corresponda) son el
+contenido que `app/index.php` reproduce como protector de pantalla mientras
+nadie ha tocado — antes era el archivo fijo `assets/media/IDT.mp4`, ahora es
+configurable desde el admin.
+
+### `eventos_pantalla`
+
+Un registro por cada evento de uso de una pantalla (hoy, un solo tipo:
+`SCREEN_STARTED`, cuando un visitante toca el protector de pantalla). Lo
+inserta `app/registrar_evento.php` y lo consume
+[`admin/reporte_pantallas.php`](./admin/usuarios-roles-y-reportes#reportes-solo-administrador).
+
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| `ID` | int, PK, autoincrement | |
+| `Modulo` | varchar(150) | nombre de la pantalla (`$_SESSION['modulo']`), texto libre igual que `lista-reproduccion.Modulo` |
+| `Evento` | varchar(50) | p. ej. `SCREEN_STARTED` |
+| `Fecha_Hora` | datetime | |
 
 ### `modulos`
 
 Los kioscos/pantallas físicas registradas (nombre + ubicación). Es lo que se
-elige en `app/log_index.php` al configurar cada pedestal.
+elige en `app/log_index.php` al configurar cada pedestal, y lo que gestiona
+[`admin/editar_modulo.php`](./admin/gestion-de-contenido#pantallas-modulosphp--editar_modulophp)
+como centro de administración de cada pantalla (contenido propio, protector
+propio, URL estable `app/index.php?pantalla=<ID>`).
 
 ### `visitantes`
 
@@ -110,10 +189,13 @@ funciones_usuario 1───N usuarios
 
 lista-reproduccion 1───N contenido
 
-modulos, frame, configuracion, visitantes, reco → tablas independientes,
-no por llave foránea. lista-reproduccion.Modulo, visitantes.modulo y
-reco.modulo se relacionan con modulos.nombre_modulo por convención
-(nombre de módulo como texto), no por llave foránea.
+biblioteca 1───N contenido   (por nombre: contenido.URL = biblioteca.URL, sin FK)
+
+modulos, frame, configuracion, visitantes, reco, eventos_pantalla →
+tablas independientes, no por llave foránea. lista-reproduccion.Modulo,
+configuracion.Modulo, visitantes.modulo, reco.modulo y
+eventos_pantalla.Modulo se relacionan con modulos.nombre_modulo por
+convención (nombre de módulo/pantalla como texto), no por llave foránea.
 ```
 
 ## Notas de diseño a tener presente

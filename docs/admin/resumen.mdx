@@ -6,8 +6,8 @@ title: Resumen
 # Panel Administrativo — Resumen
 
 Panel web (Bootstrap 4 + jQuery) desde el que se gestiona todo lo que los
-kioscos muestran: contenido, programación, módulos registrados, usuarios del
-panel y reportes de uso.
+kioscos muestran: contenido, módulos registrados, usuarios del panel y
+reportes de uso.
 
 ## Acceso
 
@@ -22,23 +22,40 @@ panel y reportes de uso.
 | Página | Acceso | Qué hace |
 |--------|--------|----------|
 | `inicio.php` | Todos | Dashboard con accesos rápidos según el rol |
-| `contenido.php` / `editar_contenido.php` | Todos | Subir, ver, editar y eliminar imágenes/video |
-| `programacion.php` / `editar_programacion.php` | Todos | Crear y gestionar listas de reproducción con fecha de activación |
-| `frame.php` / `editar_frame.php` | Todos | Ver/editar la URL que se muestra en el `<iframe>` del kiosco |
-| `modulos.php` / `editar_modulo.php` | Todos | Registrar y editar los kioscos físicos |
-| `configuracion.php` / `editar_configuracion.php` | Todos | Tiempos de inactividad del kiosco y protector de pantalla de respaldo |
-| `usuarios.php` / `editar_usuario.php` | **Solo Administrador** | CRUD de usuarios del panel |
+| `contenido.php` | Todos | Biblioteca de imágenes/video: subir archivos, publicarlos en una o varias pantallas (con fechas Desde/Hasta) y ordenar lo publicado en cada pantalla |
+| `editar_contenido.php` | Todos | Editar una publicación (ventana de fechas, estado, orden, lista); al guardar vuelve a la página de origen (`contenido.php` o `editar_modulo.php`) |
+| `modulos.php` | Todos | Listado de pantallas (kioscos físicos) registradas |
+| `nuevo_modulo.php` | Todos | Registrar una pantalla nueva |
+| `editar_modulo.php` | Todos | Centro de gestión de una pantalla puntual: datos básicos, contenido propio, protector propio y su URL estable |
+| `configuracion.php` / `editar_configuracion.php` | Todos | Tiempos de inactividad del kiosco y protector de pantalla **general** (de respaldo) |
+| `usuarios.php` | **Solo Administrador** | Listado de usuarios del panel |
+| `nuevo_usuario.php` | **Solo Administrador** | Crear un usuario nuevo |
+| `editar_usuario.php` | **Solo Administrador** | Editar o eliminar un usuario existente |
 | `perfil_usuario.php` | Todos | Editar el propio perfil |
-| `reporte_tabla.php` | **Solo Administrador** | Reporte general de interacciones |
-| `reporte_visitantes.php` | **Solo Administrador** | Listado de visitantes registrados |
-| `reporte_charts_genero.php` / `_edad.php` / `_tiempo.php` | **Solo Administrador** | Gráficas de uso (Chart.js) |
+| `reporte_pantallas.php` | **Solo Administrador** | Único reporte enlazado desde el menú: reporte de uso por pantalla (inicios de reproducción + eventos) |
+| `reporte_tabla.php`, `reporte_visitantes.php`, `reporte_charts_genero.php` / `_edad.php` / `_tiempo.php` | **Solo Administrador** (sin enlace en el menú) | Siguen existiendo y funcionando, accesibles por URL directa — ver [Reportes](./usuarios-roles-y-reportes#reportes-solo-administrador) |
 
 Todas comparten dos parciales incluidos en cada página —
 `assets/php/menu_lateral.php` (sidebar) y `assets/php/menu_superior.php`
 (topbar)— que ya filtran qué opciones se ven según el rol.
 
+:::info
+Los CRUDs de Pantallas y Usuarios separan **listado** (página base) de
+**creación** (`nuevo_*.php`); la edición sigue en `editar_*.php`. Cada
+listado tiene un botón "+ Nuevo/a X" que lleva a la página de creación.
+Contenido es la excepción: la subida y la publicación viven en la misma
+página `contenido.php` (ver
+[Gestión de contenido](./gestion-de-contenido#contenido-contenidophp)).
+Eliminar en cualquiera de ellos muestra un
+modal de confirmación (`assets/php/confirm_delete_modal.php` +
+`assets/js/confirm-delete.js`) con el nombre del recurso afectado, en vez de
+un `confirm()` nativo genérico. Además, `assets/js/app-script.js` (cargado en
+todas las páginas) deshabilita el botón de submit al enviar cualquier
+formulario, para evitar altas/ediciones duplicadas por doble clic.
+:::
+
 ## Siguiente
 
-- [Gestión de contenido](./gestion-de-contenido) — contenido, programación, módulos y frame.
+- [Gestión de contenido](./gestion-de-contenido) — contenido y módulos.
 - [Usuarios, roles y reportes](./usuarios-roles-y-reportes)
 - [Sistema de diseño](./diseno) — cómo está armado el tema visual

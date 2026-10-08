@@ -61,9 +61,11 @@ un `<script>` inline:
 5. **`admin/assets/php/menu_lateral.php`** — se quitó un `style="width:180px"`
    inline en el logo, movido a una clase CSS.
 
-Todo lo demás (`contenido.php`, `programacion.php`, `modulos.php`,
-`usuarios.php`, los `editar_*.php`, `perfil_usuario.php`, los reportes de
-tabla) se transformó con **cero cambios de HTML**.
+Todo lo demás (`modulos.php`, `usuarios.php`, los `editar_*.php`,
+`perfil_usuario.php`, los reportes de tabla) se transformó con **cero
+cambios de HTML**. La biblioteca de `contenido.php` y la lista ordenable de
+publicaciones (también usada en `editar_modulo.php`) tienen su propia hoja,
+`assets/css/contenido.css`, cargada solo en esas dos páginas.
 
 ## Tokens (en `:root`, al final de `app-style.css`)
 

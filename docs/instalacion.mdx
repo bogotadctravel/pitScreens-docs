@@ -49,6 +49,19 @@ datos semilla (módulos, funciones de usuario, una programación por defecto):
 mysql -u root idt_app < idt_app.sql
 ```
 
+`idt_app.sql` es el esquema base; las tablas y columnas agregadas después
+viven en migraciones incrementales, también en la raíz del repo, que se
+aplican **en orden** encima de él:
+
+```bash
+mysql -u root idt_app < migracion_v2.sql   # contenido por pantalla + tabla configuracion
+mysql -u root idt_app < migracion_v3.sql   # configuración por pantalla + eventos_pantalla
+mysql -u root idt_app < migracion_v4.sql   # configuracion.URL_Destino
+mysql -u root idt_app < migracion_v5.sql   # tabla biblioteca + ventana Fecha_Inicio/Fecha_Fin en contenido
+```
+
+Ver [Base de datos](./base-de-datos) para el detalle de cada tabla.
+
 ## 4. Configurar la conexión a la base de datos
 
 Hay **dos** archivos de conexión, uno por módulo — deben apuntar a la misma

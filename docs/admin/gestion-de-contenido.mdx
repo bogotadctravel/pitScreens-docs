@@ -3,84 +3,163 @@ sidebar_position: 2
 title: Gestión de contenido
 ---
 
-# Gestión de contenido, programación, módulos y frame
+# Gestión de contenido y módulos
 
 ## Contenido (`contenido.php`)
 
-1. Elige el **origen del archivo**:
-   - **Subir archivo nuevo** — selecciona un archivo del equipo (**PNG,
-     JPEG o MP4, máximo 80 MB**, validado en el navegador antes de subir).
-   - **Usar uno ya subido** — elige de un `<select>` con los archivos que ya
-     existen en la tabla `contenido` (`SELECT DISTINCT URL, Tipo`, sin
-     repetidos). Evita duplicar el mismo archivo físico en
-     `admin/assets/galeria/` cuando se quiere reutilizar un video/imagen en
-     otra programación.
-2. Elige el estado (Activo/Inactivo) y el número de orden dentro de la
-   lista.
-3. Asigna a qué lista de reproducción pertenece.
-4. Al guardar:
-   - Si el origen es un archivo nuevo, se copia a `admin/assets/galeria/` y
-     se inserta una fila en la tabla `contenido` (ver
-     [Base de datos](../base-de-datos#contenido)).
-   - Si el origen es un archivo ya subido, **no se copia ningún archivo** —
-     se inserta una fila nueva en `contenido` con el mismo `URL`/`Tipo` del
-     archivo elegido, apuntando al mismo archivo físico ya existente en
-     disco; solo cambia a qué lista de reproducción, estado y orden queda
-     asociado.
+`contenido.php` es la **biblioteca** de archivos multimedia y el lugar donde
+se publican en las pantallas. Separa dos conceptos (ver
+[Base de datos](../base-de-datos#biblioteca)):
 
-La galería se muestra debajo, separada en imágenes y videos, con una vista
-previa tipo lightbox (Fancybox) para las imágenes. Desde ahí se edita
-(`editar_contenido.php`) o se elimina cada elemento.
+- **Archivo de biblioteca** (tabla `biblioteca`) — el archivo subido a
+  `admin/assets/galeria/`, publicado o no.
+- **Publicación** (tabla `contenido`) — ese archivo dentro de la lista de
+  una pantalla (o de la lista General), con orden, estado y ventana de
+  fechas Desde/Hasta.
+
+La página tiene tres secciones:
+
+1. **Subir a la biblioteca** — permite elegir **varios archivos a la vez**
+   (**PNG, JPG o MP4, máximo 80 MB cada uno**) y los guarda con
+   `assets/php/subir_biblioteca.php`. Subir **no publica** nada. Los
+   nombres se sanean (caracteres raros → `_`) y nunca se sobrescribe un
+   archivo existente: si el nombre ya existe se le agrega un sufijo (`-1`,
+   `-2`, …), para no cambiarle el contenido a publicaciones que ya lo usan.
+2. **Biblioteca** — cuadrícula de previews con filtro **Todos / Imágenes /
+   Videos** y lightbox (Fancybox). Cada archivo muestra badges con las
+   pantallas donde está publicado, coloreados según su estado efectivo
+   (**Publicado**, **Programado**, **Finalizado**, **Inactivo**; el tooltip
+   indica la ventana de fechas). Sobre cada preview hay un ícono de
+   **publicar** (avión de papel) que abre un modal con:
+   - Checkboxes de todas las pantallas más **General**, con "Marcar /
+     desmarcar todas" y una marca "ya publicado" donde ya está.
+   - Fechas **Desde** (vacío = desde ya) y **Hasta** (vacío = sin fin).
+
+   Al enviarlo, `assets/php/publicar_contenido.php` publica el archivo en
+   cada destino marcado. Si ya estaba publicado en esa lista, **lo
+   reprograma** (nuevas fechas, `Estado = 1`) en vez de duplicarlo; si es
+   nuevo, lo agrega al final de la lista. Publicar en una pantalla que
+   todavía no tenía lista propia **le crea su lista** (`"Pantalla: <nombre>"`)
+   — desde ese momento esa pantalla deja de mostrar la lista General.
+
+   El botón de eliminar de cada archivo (`assets/php/eliminar_biblioteca.php`,
+   con modal de confirmación) lo quita de **todas** las pantallas donde
+   estaba publicado, borra su registro de `biblioteca` y borra el archivo
+   físico — salvo que ese mismo archivo esté configurado como protector de
+   pantalla en `configuracion`, en cuyo caso el archivo se conserva.
+3. **Orden y programación por pantalla** — un selector de pantalla
+   (o General; las pantallas sin lista propia aparecen como "(usa General)")
+   y la lista de lo publicado en ella, en orden de reproducción. Se
+   reordena **arrastrando** o con las **flechas** de cada fila, y el orden se
+   guarda solo (`assets/js/publicaciones.js` con jQuery UI sortable →
+   `assets/php/ordenar_contenido.php`, que responde JSON). Cada fila
+   muestra su ventana de fechas y su estado, con acciones para editar
+   (`editar_contenido.php`) o **quitarla de esa pantalla**
+   (`assets/php/eliminar_img.php`, que solo borra la publicación — el
+   archivo sigue en la biblioteca).
+
+Esta lista ordenable es un parcial compartido
+(`assets/php/lista_publicaciones.php`) que también usa
+[`editar_modulo.php`](#pantallas-modulosphp--editar_modulophp). La lógica
+común (resolver/crear la lista de una pantalla o la General, guardar
+subidas, publicar o reprogramar, calcular el estado efectivo) vive en
+`assets/php/contenido_helpers.php`. Los estilos de la biblioteca y la lista
+están en `assets/css/contenido.css`.
+
+### Editar una publicación (`editar_contenido.php`)
+
+Edita una fila de `contenido`: fechas **Desde/Hasta**, estado
+(Activo/Inactivo), orden y lista de reproducción (con la lista actual
+preseleccionada). Al guardar o cancelar vuelve a la página desde donde se
+abrió (`contenido.php` o `editar_modulo.php`, conservando sus parámetros).
+
+### Publicación automática por fechas
+
+No hay ningún proceso programado: el kiosco filtra en cada carga lo que está
+dentro de su ventana, y su polling detecta cuándo un elemento entra o sale
+de ella y recarga solo (ver
+[Sincronización en vivo](../kiosco/resumen-y-flujo#sincronización-en-vivo)).
+Así, un contenido con Desde/Hasta aparece y desaparece de la pantalla en las
+fechas programadas sin que nadie toque el admin.
 
 :::info
-La página también carga los scripts de Dropzone, Summernote y Select2, pero
-**ninguno está conectado a un elemento real del formulario** — es código
-vestigial de la plantilla original. El campo de subida es un
-`<input type="file">` nativo con un validador JS propio (`validarFile()`).
+**Programación y Frame se retiraron del panel.** El cliente no usaba
+Programación (`programacion.php`, `nueva_programacion.php`,
+`editar_programacion.php`) — cada pantalla administra su contenido directo
+desde [Pantallas](#pantallas-modulosphp--editar_modulophp) — y Frame
+(`frame.php`, `editar_frame.php`) quedó reemplazado por la **URL de
+destino** de [Configuración](#configuración-configuracionphp). Ambas páginas y sus archivos de soporte (incluyendo
+`assets/php/eliminar_programacion.php`) se eliminaron del repositorio.
+
+Esto no afecta a la base de datos: la tabla `lista-reproduccion` con
+`Modulo IS NULL` (la lista general "Default") sigue existiendo y sigue
+siendo el contenido de respaldo para pantallas sin contenido propio (ver
+[Base de datos](../base-de-datos#lista-reproduccion)) — ahora se publica
+en ella marcando **General** en el modal de publicar. La tabla `frame`
+también sigue existiendo pero ya no la lee nada (ver
+[Base de datos](../base-de-datos#frame)).
 :::
 
-## Programación (`programacion.php`)
+## Pantallas (`modulos.php` / `editar_modulo.php`)
 
-Una "programación" (`lista-reproduccion`) agrupa contenido bajo un nombre y
-una fecha/hora de activación:
+`modulos.php` lista los kioscos/pantallas físicas del sistema (nombre +
+ubicación, p. ej. *"Módulo 1 — Terminal de Transportes"*), con el subtítulo
+"Cada pantalla administra su propio contenido y protector desde 'Editar'.
+Usa Contenido para el contenido general compartido entre pantallas." La
+creación vive en `nuevo_modulo.php` ("+ Nueva pantalla"). Es la lista que
+aparece en el selector de `app/log_index.php` cuando se configura un
+pedestal nuevo o se usa el botón de
+[cambiar pantalla](../kiosco/resumen-y-flujo#cómo-volver-a-la-selección-de-módulo).
 
-1. Crear una programación con nombre y fecha de inicio.
-2. Elegir el **Alcance**: "General (todos los módulos)" o un módulo
-   específico de la tabla `modulos`. Deja la columna `Modulo` en `NULL` o
-   con el nombre elegido, respectivamente.
-3. El sistema la activa automáticamente cuando llega esa fecha/hora —
-   revisado en cada carga de `app/index.php` (ver
-   [Flujo del kiosco](../kiosco/resumen-y-flujo#contenido-general-vs-contenido-por-módulo)).
-4. **Solo una programación general** está activa a la vez; el campo
-   `Estado` no se edita a mano en condiciones normales, lo gestiona el
-   sistema, y solo compite con otras programaciones generales. Una
-   programación de módulo específico no usa `Estado` — se resuelve por
-   fecha directamente, así que puede coexistir con la general y con la de
-   otros módulos sin pisarlas.
+Cada fila tiene un ícono "Ver pantalla" que abre
+`app/index.php?pantalla=<ID>` en una pestaña nueva — la misma URL estable
+que ya se podía copiar desde `editar_modulo.php`, ahora también accesible
+directo desde el listado.
 
-La tabla de "Configuración Actual" en esta misma página lista todas las
-programaciones existentes con su columna **Módulo** (muestra "General" si
-está vacía) para que sea fácil ver de un vistazo qué módulos tienen
-contenido propio.
+Al eliminar una pantalla (`assets/php/eliminar_modulo.php`) se borran
+también su `lista-reproduccion`/`contenido`/`configuracion` propios (la
+relación es por nombre, no hay FK) — si no, quedarían huérfanos e
+inalcanzables en cuanto se pierde el nombre de la pantalla. El modal de
+confirmación avisa de esto antes de borrar.
 
-## Frame (`frame.php` / `editar_frame.php`)
+`editar_modulo.php` es el **centro de gestión de una pantalla puntual**, con
+tres secciones:
 
-Configura la **única** URL externa que se muestra en el `<iframe>` de
-`app/frame.php` (tabla `frame`, un solo registro). Es el sitio del IDT (o
-cualquier otro) que ve el visitante después de registrarse.
+1. **Datos de la pantalla** — nombre y ubicación (lo mismo que antes), más
+   la **URL de esta pantalla** (`app/index.php?pantalla=<ID>`, de solo
+   lectura) para abrirla directo en el kiosco sin pasar por el selector
+   manual de `log_index.php`. Si se renombra la pantalla, el contenido y el
+   protector propios que ya tuviera (si los tenía) se re-atan
+   automáticamente al nuevo nombre, para no dejarlos huérfanos.
+2. **Contenido de esta pantalla** — un formulario para agregar contenido
+   directo a la `lista-reproduccion` dedicada de esta pantalla (`Modulo` =
+   su nombre), con el toggle "Subir archivo nuevo" / "Usar uno ya subido"
+   (este último lista los archivos de la
+   [biblioteca](#contenido-contenidophp)) y las fechas **Desde/Hasta**
+   opcionales (ya no pide estado ni orden: entra activo y al final de la
+   lista). Las subidas nuevas se guardan igual que en la biblioteca
+   (nombre saneado, sin sobrescribir, máximo 80 MB) y quedan registradas
+   en ella. La lista de la pantalla **no existe hasta que se publica el
+   primer archivo** — abrir la página no la crea, para no generar listas
+   vacías en cada visita; se nombra automáticamente `"Pantalla: <nombre>"`.
+   Si todavía no tiene contenido propio, la página lo indica y aclara que
+   la pantalla está usando el contenido general. Debajo se muestra la misma
+   lista ordenable de `contenido.php` (arrastrar/flechas, editar, quitar de
+   esta pantalla sin borrar el archivo).
+3. **Protector de pantalla de esta pantalla** — mismos campos que
+   [`editar_configuracion.php`](#configuración-configuracionphp) (tiempos de
+   inactividad + archivo de protector + **URL al tocar esta pantalla**),
+   pero crea o actualiza la fila de
+   `configuracion` con `Modulo` = nombre de esta pantalla en vez de la fila
+   general. Si todavía no tiene una fila propia, la página lo indica y
+   parte de los valores de la configuración general al guardar por primera
+   vez (para no dejar la pantalla sin protector); lo mismo con la URL de
+   destino: si se deja vacía al crear la fila, toma la general.
 
-:::warning
-`app/proxy.php` no valida que la URL pertenezca a un dominio autorizado antes
-de descargarla con cURL — ver [Seguridad y pendientes](../seguridad-y-pendientes).
-:::
-
-## Módulos (`modulos.php` / `editar_modulo.php`)
-
-Registro de los kioscos/pantallas físicas del sistema (nombre + ubicación,
-p. ej. *"Módulo 1 — Terminal de Transportes"*). Es la lista que aparece en
-el selector de `app/log_index.php` cuando se configura un pedestal nuevo o
-se usa el botón de [cambiar módulo](../kiosco/resumen-y-flujo#cómo-volver-a-la-selección-de-módulo),
-y también la que llena el selector de **Alcance** al crear una programación.
+Ver [Base de datos](../base-de-datos#configuracion) para el patrón
+general/específico de `configuracion.Modulo`, y
+[Sincronización en vivo](../kiosco/resumen-y-flujo#sincronización-en-vivo)
+para cómo se entera el kiosco de estos cambios sin recargar a mano.
 
 ## Configuración (`configuracion.php`)
 
@@ -103,11 +182,20 @@ protector de pantalla de respaldo, con una vista previa del archivo actual
    archivo subido se copia a `admin/assets/galeria/` — el mismo folder que
    usa `contenido.php`, no una carpeta aparte — y el tipo (`video`/`image`)
    se deduce del MIME type subido.
+3. **URL al tocar la pantalla (general)** — `URL_Destino`: la página
+   externa a la que navega el kiosco cuando el visitante toca la pantalla
+   (se muestra en `app/frame.php`). Vacío = el toque no hace nada en las
+   pantallas que no tengan una URL propia. Cada pantalla puede
+   sobrescribirla desde
+   [`editar_modulo.php`](#pantallas-modulosphp--editar_modulophp). La vista
+   de solo lectura de `configuracion.php` no la muestra.
 
 :::info
 El archivo se guarda en `admin/assets/galeria/` para reutilizar la misma
-carpeta, pero **no se registra en la tabla `contenido`** — la galería de
-`contenido.php` lista archivos consultando esa tabla (no escaneando la
+carpeta, pero **no se registra en la tabla `biblioteca`** — la biblioteca
+de `contenido.php` lista archivos consultando esa tabla (no escaneando la
 carpeta), así que el protector de pantalla no aparece ahí; solo se referencia
-desde `configuracion.Protector_URL`.
+desde `configuracion.Protector_URL`. Si un archivo de la biblioteca se usa
+también como protector, eliminarlo de la biblioteca no borra el archivo
+físico.
 :::

@@ -53,16 +53,21 @@ Ambos módulos:
 ## Flujo de datos del contenido
 
 1. Un operador sube una imagen/video desde `admin/contenido.php` → se guarda
-   en `admin/assets/galeria/` y se registra en la tabla `contenido`, asociado
-   a una `lista-reproduccion`.
+   en `admin/assets/galeria/` y se registra en la tabla `biblioteca`. Al
+   publicarlo en una o varias pantallas se crea una fila en `contenido` por
+   cada `lista-reproduccion` destino, con su orden y ventana de fechas
+   opcional.
 2. `app/index.php` (pantalla de espera del kiosco) consulta, en cada carga,
    cuál `lista-reproduccion` debe estar activa según su `Fecha-Inicio`, la
    activa (`Estado = 1`) y desactiva las demás.
-3. `app/tiempo.php` se sondea por AJAX cada segundo para detectar cambios de
-   programación sin recargar la pantalla completa.
-4. El slideshow en `index.php` arma un arreglo JS (`loopAssets`) con las URLs
-   de `admin/assets/galeria/...` y reproduce imágenes (10s) o videos
-   (duración completa) en bucle.
+3. `app/tiempo.php` se sondea por AJAX cada segundo para detectar cambios
+   hechos desde el admin o contenido que entra/sale de su ventana de
+   fechas, y en ese caso `index.php` se recarga.
+4. `index.php` arma una playlist JS (protector + contenido visible ahora,
+   en su orden) con las URLs de `admin/assets/galeria/...` y reproduce
+   imágenes (10s) o videos (duración completa) en bucle. Al tocar la
+   pantalla navega a `app/frame.php`, que muestra la `URL_Destino`
+   configurada.
 
 ## Una limitación a tener en cuenta
 

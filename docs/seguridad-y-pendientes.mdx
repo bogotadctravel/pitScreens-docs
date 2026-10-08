@@ -29,7 +29,8 @@ preparadas** (`mysqli_prepare()` o PDO con parámetros bindeados).
 ## `app/proxy.php` sin lista blanca de dominios
 
 El proxy descarga cualquier URL que reciba por parámetro `?url=` y la
-re-sirve. Hoy solo se usa con la URL configurada en la tabla `frame`, pero el
+re-sirve. Hoy solo se usa con la `URL_Destino` configurada en `configuracion`
+(editable desde el admin), pero el
 endpoint en sí no valida el origen — se recomienda validar que la URL
 pertenezca a un dominio autorizado antes de hacer la petición cURL.
 
@@ -38,12 +39,14 @@ pertenezca a un dominio autorizado antes de hacer la petición cURL.
 En `app/proxy.php`, la verificación SSL está desactivada — vulnerable a
 ataques MITM. Debe activarse en producción.
 
-## Endpoints de eliminación sin verificación de sesión
+## Endpoints de eliminación sin token CSRF
 
-`admin/assets/php/eliminar_img.php` y `eliminar_usuario.php` no comprueban
-que haya una sesión de administrador activa antes de borrar. Se recomienda
-agregar la misma verificación de `$_SESSION['logeado']` que usan el resto de
-páginas del panel, más un token CSRF.
+Los 4 endpoints `admin/assets/php/eliminar_*.php` ya verifican
+`$_SESSION['logeado']` (y, en el caso de usuarios, el rol Administrador)
+antes de borrar nada — pero siguen siendo peticiones `GET` simples sin token
+CSRF, así que un enlace/imagen maliciosa en otra pestaña podría disparar un
+borrado mientras la sesión de admin está activa. Se recomienda agregar un
+token CSRF a estas acciones.
 
 ## Credenciales de base de datos en texto plano
 
@@ -74,10 +77,31 @@ Para que quede claro qué es "deuda técnica preexistente" y qué se resolvió:
 - **Logos con texto blanco invisibles** sobre el nuevo tema claro del panel
   admin (`Logo_1.png`, `Logo_2.png`) — reemplazados por versiones a color
   (ver [Sistema de diseño del panel](./admin/diseno)).
-- **"headers already sent" en páginas como `contenido.php`/`editar_frame.php`**
+- **"headers already sent" en páginas como `contenido.php`/`editar_usuario.php`**
   — ambos `Conexion_DB.php` terminaban en una etiqueta de cierre `?>` seguida
   de un salto de línea; al incluirse antes de `session_start()`, ese salto se
   enviaba como salida HTML real y rompía `session_start()`/`header()` en
   cuanto la página tenía suficiente contenido para vaciar el buffer de
   salida. Se quitó la etiqueta `?>` final de ambos archivos (nunca cerrarla
   en un archivo de solo inclusión que no tiene nada después).
+- **`admin/reporte_charts_tiempo.php` repetía el mismo dato en 4 de las 7
+  franjas de la torta de "porcentaje por tiempo"** — el array de datos del
+  gráfico de torta usaba `$numero2` en vez de `$numero3`/`$numero4`/
+  `$numero5`/`$numero6`, así que las franjas de 21-30, 31-40, 41-50 y 51-60
+  minutos mostraban todas el mismo valor que la de 11-20. Corregido.
+- **Faltaba `exit();` después de `header('Location: index.php')` en ~17
+  páginas de `admin/*.php`** — la verificación de sesión redirigía, pero el
+  resto del script seguía ejecutándose igual (incluyendo queries con datos
+  de `$_POST`), así que una petición sin sesión activa devolvía **200** con
+  datos reales en el cuerpo de la respuesta, aunque el navegador nunca
+  llegara a renderizarlos como "logueado" (seguía la redirección). Se agregó
+  `exit();` después de cada uno de esos `header()`; ahora esas páginas
+  devuelven **302** sin ejecutar nada más.
+- **Ese mismo bug reaparecía por una razón distinta:** el comentario que
+  explicaba la regla anterior citaba literalmente `"?>"` dentro de un
+  comentario de una línea (`// Sin etiqueta de cierre "?>" a propósito...`)
+  en ambos `Conexion_DB.php`. PHP corta el modo PHP en cuanto encuentra
+  `?>`, **incluso dentro de un comentario `//`** — así que el resto del
+  bloque de comentarios se filtraba como salida HTML cruda al inicio de
+  cualquier página que incluyera ese archivo. Se reescribió el comentario
+  sin citar la etiqueta de forma literal.

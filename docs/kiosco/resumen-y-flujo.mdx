@@ -14,38 +14,53 @@ instrucciones.
 | Archivo | Función |
 |---------|---------|
 | `log_index.php` | Configuración inicial: el operador elige a qué módulo/kiosco corresponde esta pantalla. Se guarda por **1 año** en sesión. |
-| `index.php` | Pantalla de espera: slideshow automático de la programación activa + "Toca la pantalla para comenzar". |
+| `index.php` | Pantalla de espera: reproduce en bucle el protector de pantalla seguido del contenido publicado para esta pantalla, con el aviso "Toca la pantalla para comenzar" encima (solo si hay URL de destino configurada). |
 | `login.php` | Pide el número de documento (compatible con lector de código de barras). |
 | `comprobacion.php` | Busca el documento en `visitantes`; redirige según si ya existe. |
 | `registro.php` | Formulario para visitantes nuevos (tipo/número de documento, nombres, apellidos, aceptación de política de datos). |
 | `datos_visitantes.php` | Guarda el registro nuevo en la base de datos. |
-| `frame.php` | Muestra el sitio del IDT en un `<iframe>`, vía `proxy.php`. |
-| `proxy.php` | Descarga con cURL la URL configurada en la tabla `frame` y la re-sirve, para evitar el bloqueo por `X-Frame-Options`. |
-| `tiempo.php` | Endpoint AJAX sondeado cada segundo desde `index.php` para detectar cambios de programación. |
+| `frame.php` | Muestra en un `<iframe>`, vía `proxy.php`, la URL de destino configurada (`configuracion.URL_Destino`, de esta pantalla o la general). Si no hay ninguna, redirige a `index.php`. |
+| `proxy.php` | Descarga con cURL la URL que recibe en `?url=` (la que le pasa `frame.php`) y la re-sirve, para evitar el bloqueo por `X-Frame-Options`. |
+| `tiempo.php` | Endpoint AJAX sondeado cada segundo desde `index.php`: devuelve la hora del servidor y una "versión" del contenido/configuración vigente, para detectar cambios hechos desde el admin. |
 | `activacion.php` | Activa una programación y desactiva las demás según la fecha. |
+| `registrar_evento.php` | Endpoint de métricas: registra en `eventos_pantalla` un evento de uso de la pantalla actual (hoy, `SCREEN_STARTED` al tocar el protector). Se llama de forma asíncrona, sin bloquear el arranque del contenido. |
+
+Tanto `log_index.php` como `index.php` aceptan opcionalmente `?pantalla=<modulos.ID>`
+en la URL: si el ID existe en `modulos`, seleccionan esa pantalla directo
+(mismo efecto que elegirla a mano en `log_index.php`) y guardan
+`$_SESSION['modulo']`/`$_SESSION['modulo_id']`. Si el ID no existe, el
+parámetro se ignora y el flujo normal sigue igual. Es la "URL estable" que
+muestra [`admin/editar_modulo.php`](../admin/gestion-de-contenido#pantallas-modulosphp--editar_modulophp)
+para abrir una pantalla puntual sin pasar por el selector.
 
 ## Flujo del visitante
 
 ```
 1. PANTALLA DE ESPERA (index.php)
-   Slideshow + "Toca la pantalla para comenzar"
+   Protector + contenido publicado, en bucle
+   + "Toca la pantalla para comenzar" (si hay URL de destino)
           │ (toca en cualquier parte de la pantalla)
+          │  → registra SCREEN_STARTED (registrar_evento.php, asíncrono)
           ▼
-2. DOCUMENTO (login.php)
-          │
-          ▼
-3. VERIFICACIÓN (comprobacion.php)
-   ├── ya registrado ──────────────► frame.php
-   └── nuevo ──► registro.php ──► datos_visitantes.php ──► frame.php
-          
-4. CONTENIDO (frame.php)
-   Sitio del IDT en iframe. Tras un rato de inactividad,
-   vuelve solo a la pantalla de espera.
+2. CONTENIDO (frame.php)
+   La URL de destino configurada, en iframe vía proxy.php.
+   Tras un rato de inactividad (Inactividad2.js), vuelve sola
+   a la pantalla de espera.
 ```
 
-Toda la superficie de `index.php` es un único enlace a `frame.php` — no hay
-que acertarle a un botón pequeño, **tocar en cualquier parte** de la pantalla
-de espera avanza al flujo de registro.
+Toda la superficie de `index.php` es una única zona táctil — no hay que
+acertarle a un botón pequeño, **tocar en cualquier parte** de la pantalla de
+espera navega a `frame.php`. Si ni esta pantalla ni la configuración general
+tienen `URL_Destino`, el aviso de toque no se muestra y tocar no hace nada.
+La URL se configura en [Configuración](../admin/gestion-de-contenido#configuración-configuracionphp)
+(general) o en [`editar_modulo.php`](../admin/gestion-de-contenido#pantallas-modulosphp--editar_modulophp)
+(por pantalla).
+
+:::info
+`login.php`, `comprobacion.php`, `registro.php` y `datos_visitantes.php`
+(registro de visitantes por documento) siguen existiendo, pero `index.php`
+ya no enlaza a ellos: el toque lleva directo a `frame.php`.
+:::
 
 ## Detección de inactividad
 
@@ -77,21 +92,73 @@ y semitransparente, en la esquina superior derecha de la pantalla de espera
 general no lo note ni lo toque por accidente:
 
 1. Toca el engranaje.
-2. Confirma en el cuadro de diálogo ("¿Cambiar el módulo asignado a este
+2. Confirma en el cuadro de diálogo ("¿Cambiar la pantalla asignada a este
    punto?").
 3. Se limpia la sesión del módulo (`assets/php/logout.php`) y vuelve a
    `log_index.php` para elegir uno nuevo.
 
 ## Reproducción de contenido
 
-- **Imágenes:** se muestran 10 segundos (`setTimeout` en JS).
-- **Video (MP4):** se reproduce completo; al terminar (`evento ended`) pasa
-  al siguiente elemento.
-- **Sin contenido configurado:** reproduce el protector de pantalla
-  configurado en `admin/configuracion.php` (tabla `configuracion`,
-  `Protector_URL`/`Protector_Tipo`; por defecto `IDT.mp4`) — ya no es un
-  archivo fijo.
-- Al llegar al último elemento de la lista, vuelve al primero (loop).
+`app/index.php` arma una sola **playlist** y la reproduce en bucle desde que
+carga la página, sin esperar a que nadie toque:
+
+1. **Primero el protector de pantalla:** el archivo configurado en
+   `configuracion` (`Protector_URL`/`Protector_Tipo`; resolviendo primero la
+   fila específica de esta pantalla y, si no existe, la general — ver
+   [Base de datos](../base-de-datos#configuracion)).
+2. **Después el contenido publicado** en la lista que corresponda a esta
+   pantalla (ver [más abajo](#contenido-general-vs-contenido-por-módulo)),
+   filtrado y ordenado así:
+   - solo filas con `Estado = 1`;
+   - solo las que están **dentro de su ventana de publicación**
+     (`Fecha_Inicio` nula o ya alcanzada, `Fecha_Fin` nula o todavía no
+     alcanzada — ver [Base de datos](../base-de-datos#contenido));
+   - en el orden definido desde el admin (`Orden` numérico, luego `ID`).
+3. Reproducción:
+   - **Imágenes:** se muestran 10 segundos (`setTimeout` en JS).
+   - **Video (MP4):** se reproduce completo; al terminar (`evento ended`)
+     pasa al siguiente elemento.
+   - Al llegar al último elemento vuelve al primero (el protector), en
+     loop indefinido.
+
+Encima de la playlist se muestra el aviso "Toca la pantalla para comenzar"
+si hay una `URL_Destino` configurada. **Al tocar**, se dispara de forma
+asíncrona (sin bloquear la navegación) un evento de métrica `SCREEN_STARTED`
+hacia `app/registrar_evento.php` (ver
+[Base de datos](../base-de-datos#eventos_pantalla)) y el kiosco navega a
+`frame.php`.
+
+## Sincronización en vivo
+
+`index.php` no recarga solo; el polling de `tiempo.php` (cada segundo) ahora
+compara una "versión" del contenido/configuración vigente y, si cambió,
+fuerza un `location.reload()` real:
+
+1. Al cargar, `index.php` calcula `contenidoVersion` con tres segmentos
+   separados por `|`: `ID` y `Fecha-Modificacion` de la `lista-reproduccion`
+   resuelta (específica o general); `ID` y `Fecha-Modificacion` de la
+   `configuracion` resuelta; y los **IDs del contenido visible ahora**
+   (activo y dentro de su ventana de fechas), ordenados.
+2. En cada tick, `tiempo.php` recalcula esa misma versión con la misma
+   resolución específica→general y la devuelve junto con la hora del
+   servidor.
+3. Si la versión del servidor difiere de la que se cargó en el navegador,
+   `index.php` ejecuta `location.reload()`.
+
+Para que esto detecte altas/ediciones/bajas de contenido, publicar,
+reordenar, editar o quitar un elemento (`admin/assets/php/publicar_contenido.php`,
+`ordenar_contenido.php`, `eliminar_img.php`, `eliminar_biblioteca.php`,
+`admin/editar_contenido.php` y la sección de contenido de
+`admin/editar_modulo.php`) también actualiza `Fecha-Modificacion` de la
+`lista-reproduccion` padre, no solo la fila de `contenido`. Así, una pantalla
+que está mostrando contenido se refresca sola segundos después de que un
+operador suba o cambie algo desde el admin — sin esperar a que termine el
+slideshow ni que el visitante toque nada.
+
+El tercer segmento cubre la **publicación/despublicación automática**:
+cuando un contenido entra o sale de su ventana `Fecha_Inicio`/`Fecha_Fin`,
+nadie modificó nada en el admin, pero el conjunto de IDs visibles que
+reporta `tiempo.php` cambia y la pantalla recarga sola.
 
 ### Contenido general vs. contenido por módulo
 
@@ -114,5 +181,4 @@ cambió.
 
 Ver [Base de datos](../base-de-datos#lista-reproduccion) para el campo
 `Modulo`, y [Panel Administrativo](../admin/gestion-de-contenido) para cómo
-se sube y programa ese contenido (incluyendo el selector de módulo al crear
-una programación).
+se sube y publica ese contenido en cada pantalla.
