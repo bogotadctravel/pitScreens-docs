@@ -171,6 +171,10 @@ elige en `app/log_index.php` al configurar cada pedestal, y lo que gestiona
 como centro de administración de cada pantalla (contenido propio, protector
 propio, URL estable `app/index.php?pantalla=<ID>`).
 
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| `Ultima_Conexion` | datetime, NULL | "Latido" de la pantalla: `app/tiempo.php` lo actualiza a `NOW()` en cada sondeo si hay un `$_SESSION['modulo_id']` activo (sondeado cada 1 segundo desde `app/index.php` y cada 20 segundos desde `app/frame.php`). `NULL` = esa pantalla nunca se ha conectado. La usa [`admin/modulos.php`](./admin/gestion-de-contenido#pantallas-modulosphp--editar_modulophp) para el indicador de actividad (verde si hace ≤60s, rojo si no). Agregada por `migracion_v6.sql` |
+
 ### `visitantes`
 
 Historial de personas que se registraron en un kiosco (tipo y número de

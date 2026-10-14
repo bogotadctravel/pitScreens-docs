@@ -111,6 +111,15 @@ aparece en el selector de `app/log_index.php` cuando se configura un
 pedestal nuevo o se usa el botón de
 [cambiar pantalla](../kiosco/resumen-y-flujo#cómo-volver-a-la-selección-de-módulo).
 
+Cada fila tiene una columna **Estado** con un ícono (bombillo) verde o rojo
+que indica si ese kiosco está actualmente conectado, calculado por
+`estado_pantalla()` a partir de `modulos.Ultima_Conexion` (ver
+[Latido de conexión](../kiosco/resumen-y-flujo#latido-de-conexión)): verde
+si el último latido fue hace 60 segundos o menos, rojo si fue hace más o si
+la pantalla nunca se ha conectado. El tooltip del ícono muestra el detalle
+("Activa — último contacto hace *N* segundos", "Sin conexión desde el
+*fecha*" o "Nunca se ha conectado").
+
 Cada fila tiene un ícono "Ver pantalla" que abre
 `app/index.php?pantalla=<ID>` en una pestaña nueva — la misma URL estable
 que ya se podía copiar desde `editar_modulo.php`, ahora también accesible

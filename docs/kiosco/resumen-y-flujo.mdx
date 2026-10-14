@@ -19,9 +19,9 @@ instrucciones.
 | `comprobacion.php` | Busca el documento en `visitantes`; redirige según si ya existe. |
 | `registro.php` | Formulario para visitantes nuevos (tipo/número de documento, nombres, apellidos, aceptación de política de datos). |
 | `datos_visitantes.php` | Guarda el registro nuevo en la base de datos. |
-| `frame.php` | Muestra en un `<iframe>`, vía `proxy.php`, la URL de destino configurada (`configuracion.URL_Destino`, de esta pantalla o la general). Si no hay ninguna, redirige a `index.php`. |
+| `frame.php` | Muestra en un `<iframe>`, vía `proxy.php`, la URL de destino configurada (`configuracion.URL_Destino`, de esta pantalla o la general). Si no hay ninguna, redirige a `index.php`. También sondea `tiempo.php` cada 20 segundos (ver [Latido de conexión](#latido-de-conexión) ), ignorando la respuesta. |
 | `proxy.php` | Descarga con cURL la URL que recibe en `?url=` (la que le pasa `frame.php`) y la re-sirve, para evitar el bloqueo por `X-Frame-Options`. |
-| `tiempo.php` | Endpoint AJAX sondeado cada segundo desde `index.php`: devuelve la hora del servidor y una "versión" del contenido/configuración vigente, para detectar cambios hechos desde el admin. |
+| `tiempo.php` | Endpoint AJAX sondeado cada segundo desde `index.php` (y cada 20 segundos desde `frame.php`): devuelve la hora del servidor y una "versión" del contenido/configuración vigente, para detectar cambios hechos desde el admin; de paso, deja el [latido de conexión](#latido-de-conexión) de la pantalla. |
 | `activacion.php` | Activa una programación y desactiva las demás según la fecha. |
 | `registrar_evento.php` | Endpoint de métricas: registra en `eventos_pantalla` un evento de uso de la pantalla actual (hoy, `SCREEN_STARTED` al tocar el protector). Se llama de forma asíncrona, sin bloquear el arranque del contenido. |
 
@@ -40,7 +40,7 @@ para abrir una pantalla puntual sin pasar por el selector.
    Protector + contenido publicado, en bucle
    + "Toca la pantalla para comenzar" (si hay URL de destino)
           │ (toca en cualquier parte de la pantalla)
-          │  → registra SCREEN_STARTED (registrar_evento.php, asíncrono)
+          │  → registra SCREEN_STARTED (registrar_evento.php, vía sendBeacon)
           ▼
 2. CONTENIDO (frame.php)
    La URL de destino configurada, en iframe vía proxy.php.
@@ -122,11 +122,29 @@ carga la página, sin esperar a que nadie toque:
      loop indefinido.
 
 Encima de la playlist se muestra el aviso "Toca la pantalla para comenzar"
-si hay una `URL_Destino` configurada. **Al tocar**, se dispara de forma
-asíncrona (sin bloquear la navegación) un evento de métrica `SCREEN_STARTED`
-hacia `app/registrar_evento.php` (ver
-[Base de datos](../base-de-datos#eventos_pantalla)) y el kiosco navega a
-`frame.php`.
+si hay una `URL_Destino` configurada. **Al tocar**, `irAUrlDestino()` envía
+un evento de métrica `SCREEN_STARTED` hacia `app/registrar_evento.php` (ver
+[Base de datos](../base-de-datos#eventos_pantalla)) y de inmediato navega a
+`frame.php`. El envío usa `navigator.sendBeacon()` en vez de `$.post`: un
+`$.post` normal podía quedar cancelado a mitad de camino por la navegación
+inmediata a `frame.php` y el toque nunca quedaba registrado, mientras que
+`sendBeacon` garantiza la entrega aunque la página ya esté navegando. Si el
+navegador no soporta `sendBeacon`, cae a `$.post` como respaldo.
+
+## Latido de conexión
+
+Mientras una pantalla tiene un módulo asignado (`$_SESSION['modulo_id']`),
+cada sondeo a `tiempo.php` —cada 1 segundo desde `index.php`, cada 20
+segundos desde `frame.php`— actualiza `modulos.Ultima_Conexion` a la hora
+actual del servidor (ver [Base de datos](../base-de-datos#modulos)). Es
+el único propósito del sondeo de `frame.php`: a diferencia del de
+`index.php`, ignora la respuesta a propósito, para no forzar un recarga ni
+interrumpir el contenido que el visitante está viendo en el iframe.
+
+[`admin/modulos.php`](../admin/gestion-de-contenido#pantallas-modulosphp--editar_modulophp)
+usa ese campo para mostrar un indicador de actividad por pantalla: verde si
+el último latido fue hace 60 segundos o menos, rojo si fue hace más o si la
+pantalla nunca se ha conectado (`Ultima_Conexion` en `NULL`).
 
 ## Sincronización en vivo
 
