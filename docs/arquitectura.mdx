@@ -63,8 +63,8 @@ Ambos módulos:
 3. `app/tiempo.php` se sondea por AJAX cada segundo para detectar cambios
    hechos desde el admin o contenido que entra/sale de su ventana de
    fechas, y en ese caso `index.php` se recarga.
-4. `index.php` arma una playlist JS (protector + contenido visible ahora,
-   en su orden) con las URLs de `admin/assets/galeria/...` y reproduce
+4. `index.php` arma una playlist JS (contenido visible ahora, en su orden,
+   precedido del protector solo cuando corresponde) con las URLs de `admin/assets/galeria/...` y reproduce
    imágenes (10s) o videos (duración completa) en bucle. Al tocar la
    pantalla navega a `app/frame.php`, que muestra la `URL_Destino`
    configurada.

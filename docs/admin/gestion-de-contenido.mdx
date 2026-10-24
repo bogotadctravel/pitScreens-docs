@@ -152,7 +152,11 @@ tres secciones:
    primer archivo** — abrir la página no la crea, para no generar listas
    vacías en cada visita; se nombra automáticamente `"Pantalla: <nombre>"`.
    Si todavía no tiene contenido propio, la página lo indica y aclara que
-   la pantalla está usando el contenido general. Debajo se muestra la misma
+   la pantalla está usando el contenido general. Mientras la pantalla tenga
+   al menos un elemento propio visible (activo y dentro de sus fechas), el
+   kiosco reproduce **solo** ese contenido, sin el protector general; si
+   ninguno está visible, vuelve al contenido general con su protector (ver
+   [Reproducción de contenido](../kiosco/resumen-y-flujo#reproducción-de-contenido)). Debajo se muestra la misma
    lista ordenable de `contenido.php` (arrastrar/flechas, editar, quitar de
    esta pantalla sin borrar el archivo).
 3. **Protector de pantalla de esta pantalla** — mismos campos que
@@ -160,7 +164,9 @@ tres secciones:
    inactividad + archivo de protector + **URL al tocar esta pantalla**),
    pero crea o actualiza la fila de
    `configuracion` con `Modulo` = nombre de esta pantalla en vez de la fila
-   general. Si todavía no tiene una fila propia, la página lo indica y
+   general. Un protector propio se reproduce siempre en esta pantalla,
+   también junto a su contenido específico. Si todavía no tiene una fila
+   propia, la página lo indica y
    parte de los valores de la configuración general al guardar por primera
    vez (para no dejar la pantalla sin protector); lo mismo con la URL de
    destino: si se deja vacía al crear la fila, toma la general.

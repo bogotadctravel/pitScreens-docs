@@ -147,7 +147,10 @@ caen a la fila general (`Modulo IS NULL`).
 `Protector_URL`/`Protector_Tipo` (de la fila que corresponda) son el
 contenido que `app/index.php` reproduce como protector de pantalla mientras
 nadie ha tocado — antes era el archivo fijo `assets/media/IDT.mp4`, ahora es
-configurable desde el admin.
+configurable desde el admin. El protector de la fila general solo se
+reproduce en pantallas que están mostrando el contenido general; el de una
+fila de pantalla se reproduce siempre en esa pantalla (ver
+[Reproducción de contenido](./kiosco/resumen-y-flujo#reproducción-de-contenido)).
 
 ### `eventos_pantalla`
 
